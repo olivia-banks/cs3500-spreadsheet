@@ -1,5 +1,6 @@
 ﻿namespace Formula;
 
-public class Class1
+public class Formula
 {
+    // Follow the PS2 instructions
 }
