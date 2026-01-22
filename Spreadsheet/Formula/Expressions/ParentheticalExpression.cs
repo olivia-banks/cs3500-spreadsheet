@@ -11,4 +11,6 @@ namespace Formula.Expressions;
 /// <param name="Inner">The inner expression contained within the parentheses.</param>
 public record ParentheticalExpression(SyntaxSpan Span, Expression Inner) : Expression(Span)
 {
+    /// <inheritdoc/>
+    public override void Accept(IExpressionVisitor visitor) => visitor.Visit(this);
 }

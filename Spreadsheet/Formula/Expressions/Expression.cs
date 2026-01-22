@@ -9,5 +9,10 @@ namespace Formula.Expressions;
 /// </summary>
 public abstract record Expression(SyntaxSpan Span)
 {
-
+    /// <summary>
+    ///     <para>
+    ///         Accepts a visitor that implements the <see cref="IExpressionVisitor"/> interface.
+    ///     </para>
+    /// </summary>
+    public abstract void Accept(IExpressionVisitor visitor);
 }

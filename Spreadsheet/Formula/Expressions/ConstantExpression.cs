@@ -15,4 +15,6 @@ namespace Formula.Expressions;
 /// <param name="Value">The numeric value of the constant.</param>
 public record ConstantExpression(SyntaxSpan Span, double Value) : Expression(Span)
 {
+    /// <inheritdoc/>
+    public override void Accept(IExpressionVisitor visitor) => visitor.Visit(this);
 }

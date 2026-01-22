@@ -49,4 +49,6 @@ public enum BinaryOpKind
 /// <param name="Right">The right hand side (rhs) of the operator. </param>
 public record BinaryOpExpression(SyntaxSpan Span, BinaryOpKind Op, Expression Left, Expression Right) : Expression(Span)
 {
+    /// <inheritdoc/>
+    public override void Accept(IExpressionVisitor visitor) => visitor.Visit(this);
 }

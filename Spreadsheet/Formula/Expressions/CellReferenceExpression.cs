@@ -12,4 +12,6 @@ namespace Formula.Expressions;
 /// <param name="RowIndex">The 0-based row of the column.</param>
 public record CellReferenceExpression(SyntaxSpan Span, int ColumnIndex, int RowIndex) : Expression(Span)
 {
+    /// <inheritdoc/>
+    public override void Accept(IExpressionVisitor visitor) => visitor.Visit(this);
 }
