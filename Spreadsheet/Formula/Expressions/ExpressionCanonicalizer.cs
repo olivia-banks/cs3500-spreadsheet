@@ -1,5 +1,6 @@
 using System.Globalization;
 using System.Text;
+using Formula.Util;
 
 namespace Formula.Expressions;
 
@@ -70,29 +71,7 @@ public class ExpressionCanonicalizer : IExpressionVisitor
     /// <inheritdoc />
     public void Visit(CellReferenceExpression cellRef)
     {
-        var columnIndex = cellRef.ColumnIndex;
-        var rowIndex = cellRef.RowIndex;
-        
-        if (columnIndex < 0 || rowIndex < 0)
-            throw new InvalidOperationException("Cannot canonicalize a cell reference with negative indices.");
-
-        // Convert column index to letters via base-26 representation with 'A' = 0, 'B' = 1, ..., 'Z' = 25.
-        {
-            var columnChars = new List<char>();
-
-            do
-            {
-                var remainder = columnIndex % 26;
-                columnChars.Add((char)('A' + remainder));
-                columnIndex = columnIndex / 26 - 1;
-            } while (columnIndex >= 0);
-
-            columnChars.Reverse();
-            _canonicalFormBuilder.Append(new string(columnChars.ToArray()));
-        }
-
-        // Convert row index to 1-based number.
-        _canonicalFormBuilder.Append(rowIndex + 1);
+        _canonicalFormBuilder.Append(CellReferenceCanonicalizer.Canonicalize(cellRef.ColumnIndex, cellRef.RowIndex));
     }
 
     /// <inheritdoc />
