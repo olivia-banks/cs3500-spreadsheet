@@ -1,3 +1,5 @@
+using Formula.Expressions;
+
 namespace Formula.Frontend;
 
 /// <summary>
@@ -9,6 +11,11 @@ namespace Formula.Frontend;
 ///     <para>
 ///         This parser implements standard recursive descent, with precedence climbing when handling precedence-based
 ///         expressions (i.e., binary arithmetic operators).
+///     </para>
+///     <para>
+///         While exceptions will eventually be reported in-band, and this parser made a bit more robust, for now
+///         it will throw <see cref="FormulaFormatException"/> when it encounters syntax errors, as per the assignment
+///         description.
 ///     </para>
 /// </summary>
 public class Parser : IDisposable
@@ -98,7 +105,7 @@ public class Parser : IDisposable
             // If we hit an error token, that's a syntax error.
             if (_current.Kind is SyntaxTokenKind.Error)
             {
-                throw new Exception($"{_current.Span}: unexpected token `{_current.Spelling}' found in expression.");
+                throw new FormulaFormatException($"{_current.Span}: unexpected token `{_current.Spelling}' found in expression.");
             }
         } while (_current.Kind is SyntaxTokenKind.Trivia);
     }
@@ -110,17 +117,19 @@ public class Parser : IDisposable
     ///     </para>
     /// </summary>
     /// <exception cref="Exception">An internal bug has occured due to a parser-state mismatch.</exception>
-    public void Parse()
+    public Expression Parse()
     {
         // A formula is just an expression that consumes the entire token stream.
-        ParseExpression(0);
+        var expression = ParseExpression(0);
 
         // Ensure we've consumed everything. If not, that's a syntax error.
         if (_current.Kind != SyntaxTokenKind.Eoi)
         {
-            throw new Exception(
+            throw new FormulaFormatException(
                 $"{_current.Span}: unexpected token `{_current.Spelling}' (of type {_current.Kind}) found at end of expression... what's up?");
         }
+
+        return expression;
     }
 
     /// <summary>
@@ -132,9 +141,9 @@ public class Parser : IDisposable
     /// <param name="minPrecedence">
     ///     An internal parameter used for presidence climbing; functions outside this one should use 0 as the default.
     /// </param>
-    private void ParseExpression(int minPrecedence)
+    private Expression ParseExpression(int minPrecedence)
     {
-        ParsePrimary();
+        var lhs = ParsePrimary();
 
         // A basic precedence climbing loop to handle binary arithmetic operators. This will repeatedly
         // consume operators and their right-hand side expressions as long as the operator precedence
@@ -159,31 +168,22 @@ public class Parser : IDisposable
             Advance();
 
             // Parse right-hand side expression (of higher precedence).
-            ParseExpression(tokenPrec + 1);
+            var rhs = ParseExpression(tokenPrec + 1);
+            var span = new SyntaxSpan(lhs.Span, rhs.Span);
 
-            switch (op.Kind)
+            lhs = op.Kind switch
             {
-                case SyntaxTokenKind.AdditionOperator:
-                    Console.WriteLine("+");
-                    break;
-
-                case SyntaxTokenKind.SubtractionOperator:
-                    Console.WriteLine("-");
-                    break;
-
-                case SyntaxTokenKind.MultiplicationOperator:
-                    Console.WriteLine("*");
-                    break;
-
-                case SyntaxTokenKind.DivisionOperator:
-                    Console.WriteLine("/");
-                    break;
-
-                default:
-                    throw new Exception(
-                        $"{op.Span}: unexpected binary operator `{op.Spelling}' of type {op.Kind}, expected either `+', `-', `*', or `/'.");
-            }
+                SyntaxTokenKind.AdditionOperator => new BinaryOpExpression(span, BinaryOpKind.Addition, lhs, rhs),
+                SyntaxTokenKind.SubtractionOperator => new BinaryOpExpression(span, BinaryOpKind.Subtraction, lhs, rhs),
+                SyntaxTokenKind.MultiplicationOperator => new BinaryOpExpression(span, BinaryOpKind.Multiplication, lhs,
+                    rhs),
+                SyntaxTokenKind.DivisionOperator => new BinaryOpExpression(span, BinaryOpKind.Division, lhs, rhs),
+                _ => throw new FormulaFormatException(
+                    $"{op.Span}: unexpected binary operator `{op.Spelling}' of type {op.Kind}, expected either `+', `-', `*', or `/'.")
+            };
         }
+
+        return lhs;
     }
 
     /// <summary>
@@ -192,7 +192,7 @@ public class Parser : IDisposable
     ///     </para>
     /// </summary>
     /// <exception cref="Exception">An internal bug has occured due to a parser-state mismatch.</exception>
-    private void ParsePrimary()
+    private Expression ParsePrimary()
     {
         switch (_current.Kind)
         {
@@ -206,33 +206,34 @@ public class Parser : IDisposable
                         "BUG: numeric literal failed to parse despite being tokenized as a numeric literal.");
                 }
 
-                Console.WriteLine($"Parsed constant: {_current.Spelling} -> {constantValue}");
+                var constant = new ConstantExpression(_current.Span, constantValue);
                 Advance();
 
-                return;
+                return constant;
 
             case SyntaxTokenKind.CellReference:
-                Console.WriteLine($"Parsed cell reference: {_current.Spelling}");
+                var cellReference = ParseCellReference(_current.Span, _current.Spelling);
                 Advance();
 
-                return;
+                return cellReference;
 
             case SyntaxTokenKind.LParenthesis:
                 Advance();
 
-                ParseExpression(0);
+                var inner = ParseExpression(0);
+                var outer = new ParentheticalExpression(_current.Span, inner);
 
                 if (_current.Kind != SyntaxTokenKind.RParenthesis)
                 {
-                    throw new Exception(
+                    throw new FormulaFormatException(
                         $"{_current.Span}: expected `)' to match `(', but got `{_current.Spelling}' (of type {_current.Kind}) instead.");
                 }
 
                 Advance();
-                return;
+                return outer;
 
             default:
-                throw new Exception(
+                throw new FormulaFormatException(
                     $"{_current.Span}: unexpected token `{_current.Spelling}' (of type {_current.Kind}), expected a number, variable, or '('.");
         }
     }
@@ -244,7 +245,7 @@ public class Parser : IDisposable
     /// </summary>
     /// <param name="cellRepr">The string representation of the cell in question.</param>
     /// <returns>A parsed version of the cell reference.</returns>
-    private (int, int) ParseCellReference(string cellRepr)
+    private CellReferenceExpression ParseCellReference(SyntaxSpan span, string cellRepr)
     {
         // How do we parse cell references? Well, they start with one or more letters (A-Z, case-insensitive)
         // indicating the column, followed by one or more digits (0-9) indicating the row.
@@ -275,13 +276,13 @@ public class Parser : IDisposable
         // Get row part (from where we left off to the end).
         if (!int.TryParse(cellRepr[columnCursor..], out var rowIndex))
         {
-            throw new Exception(
-                $"invalid cell reference `{cellRepr}'; expected digits after column letters.");
+            throw new FormulaFormatException(
+                $"{span}: invalid cell reference `{cellRepr}'; expected digits after column letters.");
         }
-
+            
         // Subtract 1 to get zero-based index.
         rowIndex -= 1;
-
-        return (columnIndex, rowIndex);
+        
+        return new CellReferenceExpression(span, columnIndex, rowIndex);
     }
 }
