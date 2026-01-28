@@ -17,11 +17,14 @@ public class DependencyGraphTests
     /// </summary>
     [TestMethod]
     [Timeout(2000, CooperativeCancellation = true)]
-    public void StressTest()
+    public void DependencyGraphIntegration_TestStressfulSituation_ValidState()
     {
         DependencyGraph dg = new();
 
-        // A bunch of strings to use
+        // Arrange
+
+        // Create a large number of unique letters to use as nodes in the graph. This
+        // will create strings "a", "b", "c", ..., "z", "aa", "ab", ..., up to <c>size</c>.
         const int size = 200;
         var letters = new string[size];
         for (var i = 0; i < size; i++)
@@ -29,16 +32,20 @@ public class DependencyGraphTests
             letters[i] = string.Empty + ((char)('a' + i));
         }
 
-        // The correct answers
-        HashSet<string>[] dependents = new HashSet<string>[size];
-        HashSet<string>[] dependees = new HashSet<string>[size];
+        // Keep track of what the correct dependents and dependees are for each node, so
+        // that we may verify the graph's state later.
+        var dependents = new HashSet<string>[size];
+        var dependees = new HashSet<string>[size];
         for (var i = 0; i < size; i++)
         {
             dependents[i] = [];
             dependees[i] = [];
         }
 
-        // Add a bunch of dependencies
+        // Act
+
+        // Add a bunch of dependencies so that every node depends on every node after it.
+        // This creates some noise.
         for (var i = 0; i < size; i++)
         {
             for (var j = i + 1; j < size; j++)
@@ -49,7 +56,7 @@ public class DependencyGraphTests
             }
         }
 
-        // Remove a bunch of dependencies
+        // Remove some dependencies in a regular pattern to create more noise.
         for (var i = 0; i < size; i++)
         {
             for (var j = i + 4; j < size; j += 4)
@@ -60,7 +67,7 @@ public class DependencyGraphTests
             }
         }
 
-        // Add some back
+        // Add some more dependencies back, in a different pattern.
         for (var i = 0; i < size; i++)
         {
             for (var j = i + 1; j < size; j += 2)
@@ -71,7 +78,7 @@ public class DependencyGraphTests
             }
         }
 
-        // Remove some more
+        // Remove some more dependencies in yet another pattern.
         for (var i = 0; i < size; i += 2)
         {
             for (var j = i + 3; j < size; j += 3)
@@ -82,7 +89,9 @@ public class DependencyGraphTests
             }
         }
 
-        // Make sure everything is right
+        // Assert
+
+        // Finally, verify that the graph's state matches our expected dependents and dependees.
         for (var i = 0; i < size; i++)
         {
             Assert.IsTrue(dependents[i].SetEquals(new HashSet<string>(dg.GetDependents(letters[i]))));
