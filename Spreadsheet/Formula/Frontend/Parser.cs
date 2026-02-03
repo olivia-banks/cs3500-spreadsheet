@@ -245,7 +245,7 @@ public class Parser : IDisposable
     /// </summary>
     /// <param name="cellRepr">The string representation of the cell in question.</param>
     /// <returns>A parsed version of the cell reference.</returns>
-    private CellReferenceExpression ParseCellReference(SyntaxSpan span, string cellRepr)
+    private static CellReferenceExpression ParseCellReference(SyntaxSpan span, string cellRepr)
     {
         // How do we parse cell references? Well, they start with one or more letters (A-Z, case-insensitive)
         // indicating the column, followed by one or more digits (0-9) indicating the row.
@@ -265,24 +265,36 @@ public class Parser : IDisposable
         var columnStated = 0;
         var columnCursor = 0;
 
-        for (; char.IsLetter(cellRepr[columnCursor]); columnCursor++)
+        try
         {
-            columnStated = columnStated * 26 + (char.ToUpperInvariant(cellRepr[columnCursor]) - 'A' + 1);
-        }
+            for (; char.IsLetter(cellRepr[columnCursor]); columnCursor++)
+            {
+                columnStated = checked(columnStated * 26 + (char.ToUpperInvariant(cellRepr[columnCursor]) - 'A' + 1));
+            }
 
-        // Subtract 1 to get zero-based index.
-        var columnIndex = columnStated - 1;
+            // Subtract 1 to get zero-based index.
+            var columnIndex = checked(columnStated - 1);
 
-        // Get row part (from where we left off to the end).
-        if (!int.TryParse(cellRepr[columnCursor..], out var rowIndex))
+            // Get row part (from where we left off to the end).
+            if (!int.TryParse(cellRepr[columnCursor..], out var rowIndex))
+            {
+                throw new FormulaFormatException(
+                    $"{span}: invalid cell reference `{cellRepr}'; expected digits after column letters.");
+            }
+
+            // Subtract 1 to get zero-based index.
+            rowIndex = checked(rowIndex - 1);
+            
+            return new CellReferenceExpression(span, columnIndex, rowIndex);
+        } catch (IndexOutOfRangeException)
         {
             throw new FormulaFormatException(
-                $"{span}: invalid cell reference `{cellRepr}'; expected digits after column letters.");
+                $"{span}: invalid cell reference `{cellRepr}'; expected letters followed by digits.");
         }
-            
-        // Subtract 1 to get zero-based index.
-        rowIndex -= 1;
-        
-        return new CellReferenceExpression(span, columnIndex, rowIndex);
+        catch (OverflowException)
+        {
+            throw new FormulaFormatException(
+                $"{span}: cell reference `{cellRepr}' is too large to be represented.");
+        }
     }
 }
