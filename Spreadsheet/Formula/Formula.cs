@@ -19,6 +19,20 @@ namespace Formula;
 
 /// <summary>
 ///     <para>
+///         Any method meeting this type signature can be used for
+///         looking up the value of a variable.
+///     </para>
+/// </summary>
+/// <param name="variableName">The name of the variable (e.g., <c>A1</c>) to lookup.</param>
+/// <exception cref="ArgumentException">
+///     If a variable name is provided that is not recognized by the implementing method,
+///     then the method shall throw this.
+/// </exception>
+/// <returns>The value of the given variable (if one exists).</returns>
+public delegate double Lookup(string variableName);
+
+/// <summary>
+///     <para>
 ///         Represents formulas written in standard infix notation using standard precedence rules. The allowed
 ///         symbols are  non-negative numbers written using double-precision floating-point syntax; variables that
 ///         consist of one or more letters followed by  one or more numbers; parentheses; and the four operator
@@ -56,6 +70,13 @@ namespace Formula;
 ///         this doens't count as over-engineering, but since this class is on software maintainability and design,
 ///         I figure it's better to err on the side of clarity.
 ///     </para>
+///     <para>
+///         As mentioned above, error reporting is minimal for now, as per the assignment specifications. The
+///         parser throws FormulaFormatExceptions when it encounters syntax errors, but the expression tree
+///         itself does not store any error information. There is the infrastructure for this, though, so once
+///         this is implemented it will have to collapse into <see cref="FormulaError"/> at the Formula façade
+///         level.
+///     </para>
 /// </summary>
 public class Formula
 {
@@ -65,6 +86,20 @@ public class Formula
     ///     </para>
     /// </summary>
     private readonly Expression _expression;
+
+    /// <summary>
+    ///     <para>
+    ///         The expression tree, canonicalized according to the assignment specifications.
+    ///     </para>
+    /// </summary>
+    private readonly ExpressionCanonicalizer _canonical;
+
+    /// <summary>
+    ///     <para>
+    ///         The expression tree, hashed according to the rules in <see cref="ExpressionHasher"/>.
+    ///     </para>
+    /// </summary>
+    private readonly ExpressionHasher _hasher;
 
     /// <summary>
     ///     Initializes a new instance of the <see cref="Formula"/> class.
@@ -90,7 +125,14 @@ public class Formula
     ///         <item>
     ///             Invalid Following Rule, e.g., "2x+5"
     ///         </item>
-    ///   </list>
+    ///     </list>
+    ///     <summary>
+    ///         This constructor does a lot of auxiliary work to parse the formula string into an expression tree,
+    ///         canonicalize it, and hash it for equality comparisons. All of this is done once at construction time
+    ///         so that the public methods can operate efficiently. This works because this class is immutable once
+    ///         constructed (enforced by having only readonly fields and no mutating methods, doing this at the
+    ///         language level isn't possible due to the assignment API we have to expose).
+    ///     </summary>
     /// </summary>
     /// <param name="formula"> The string representation of the formula to be created.</param>
     public Formula(string formula)
@@ -98,6 +140,8 @@ public class Formula
         var tokenizer = new Tokenizer(formula);
         using var parser = new Parser(tokenizer.Tokens());
         _expression = parser.Parse();
+        _canonical = new ExpressionCanonicalizer(_expression);
+        _hasher = new ExpressionHasher(_expression);
     }
 
     /// <summary>
@@ -140,6 +184,124 @@ public class Formula
 
     /// <summary>
     ///     <para>
+    ///         Reports whether f1 == f2, using the notion of equality from the <see cref="Equals"/> method.
+    ///     </para>
+    /// </summary>
+    /// <param name="f1">The first of two formula objects.</param>
+    /// <param name="f2">The second of two formula objects.</param>
+    /// <returns><c>true</c> if the two formulas are the same, <c>false</c> otherwise.</returns>
+    public static bool operator ==(Formula f1, Formula f2)
+        => f1.Equals(f2);
+
+    /// <summary>
+    ///     <para>
+    ///         Reports whether f1 != f2, using the notion of equality from the <see cref="Equals"/> method.
+    ///     </para>
+    ///     <para>
+    ///         This is defined as the negation of <see cref="operator =="/>.
+    ///     </para>
+    /// </summary>
+    /// <param name="f1">The first of two formula objects.</param>
+    /// <param name="f2">The second of two formula objects.</param>
+    /// <returns><c>true</c> if the two formulas are not equal to each other, <c>false</c> otherwise.</returns>
+    public static bool operator !=(Formula f1, Formula f2)
+        => !(f1 == f2);
+
+    /// <summary>
+    ///     <para>
+    ///         Determines if two <see cref="Formula"/> objects represent the same <see cref="Formula"/>.
+    ///     </para>
+    ///     <para>
+    ///         By definition, if the parameter is null or does not reference
+    ///         a <see cref="Formula"/> object then return false.
+    ///     </para>
+    ///     <para>
+    ///         Two Formulas are considered equal if their canonical string representations
+    ///         (as defined by <see cref="ToString"/>) are equal.
+    ///     </para>
+    /// </summary>
+    /// <param name="obj">The other object.</param>
+    /// <returns><c>true</c> if the two objects represent the same formula, <c>false</c> otherwise.</returns>
+    public override bool Equals(object? obj)
+    {
+        // Reject null or non-Formula objects early.
+        if (obj == null || obj.GetType() != typeof(Formula))
+        {
+            return false;
+        }
+
+        // Check hashes first to discard unequal formulas quickly.
+        if (_hasher.ComputedHash != obj.GetHashCode())
+        {
+            return false;
+        }
+
+        // Do a deep comparison via ToString. At least we don't have to do a walk here?
+        return obj.ToString() == ToString();
+    }
+
+    /// <summary>
+    ///     <para>
+    ///         Evaluates this Formula, using the lookup delegate to determine the values of
+    ///         variables.
+    ///     </para>
+    ///     <remarks>
+    ///         When the lookup method is called, it will always be passed a normalized (capitalized)
+    ///         variable name. The lookup method will throw an <see cref="ArgumentException"/> if there
+    ///         is not a definition for that variable token.
+    ///     </remarks>
+    ///     <para>
+    ///         If no undefined variables or divisions by zero are encountered when evaluating
+    ///         this Formula, the numeric value of the formula is returned. Otherwise, a
+    ///         <see cref="FormulaError"/> is returned (with a meaningful explanation as the Reason
+    ///         property).
+    ///     </para>
+    ///     <para>
+    ///         This method will throw an <see cref="ArgumentException"/> on an unknown variable.
+    ///     </para>
+    /// </summary>
+    /// <param name="lookup">
+    ///     <para>
+    ///         Given a variable symbol as its parameter, lookup returns the variable's value
+    ///         (if it has one) or throws an <see cref="ArgumentException"/> (otherwise). This method
+    ///         will expect variable names to be normalized.
+    ///     </para>
+    /// </param>
+    /// <returns>Either a <c>double</c> or a <see cref="FormulaError"/>, based on evaluating the formula.</returns>
+    public object Evaluate(Lookup lookup)
+    {
+        // Create an expression evaluator that uses the provided lookup function to resolve cell references.
+        // The evaluator will traverse the expression tree and compute the result. For each cell reference,
+        // it will call the lookup function with the canonicalized cell reference string.
+        try
+        {
+            var evaluator = new ExpressionEvaluator(_expression,
+                (col, row) => lookup(CellReferenceCanonicalizer.Canonicalize(col, row)));
+
+            return evaluator.Result;
+        } catch (DivideByZeroException)
+        {
+            return new FormulaError("Division by zero encountered during evaluation.");
+        }
+        catch (ArgumentException argEx)
+        {
+            return new FormulaError($"Some sort of invalid data was presented: '{argEx.Message}'");   
+        }
+    }
+
+    /// <summary>
+    ///     <para>
+    ///         Returns a hash code for this Formula. If <c>f1.Equals(f2)</c>, then it must be the
+    ///         case that <c>f1.GetHashCode() == f2.GetHashCode()</c>.  Ideally, the probability that two
+    ///         randomly-generated unequal Formulas have the same hash code should be miniscule.
+    ///     </para>
+    /// </summary>
+    /// <returns>The hashcode for the object.</returns>
+    public override int GetHashCode()
+        => _hasher.ComputedHash;
+
+    /// <summary>
+    ///     <para>
     ///         Returns a string representation of a canonical form of the formula.
     ///     </para>
     ///     <para>
@@ -168,19 +330,47 @@ public class Formula
     ///     </para>
     /// </summary>
     /// <returns>
-    ///   A canonical version (string) of the formula. All "equal" formulas
-    ///   should have the same value here.
+    ///     A canonical version (string) of the formula. All "equal" formulas
+    ///     should have the same value here.
     /// </returns>
     public override string ToString()
-    {
-        var canonicalizer = new ExpressionCanonicalizer(_expression);
-        return canonicalizer.CanonicalForm;
-    }
+        => _canonical.CanonicalForm;
 }
 
 /// <summary>
 ///     <para>
-///         Used to report syntax errors in the argument to the <see cref="Formula"/> constructor.
+///         Used as a possible return value of the <see cref="Formula.Evaluate" /> method. You can think of this
+///         as the runtime version of <see cref="FormulaFormatException"/>.
+///     </para>
+/// </summary>
+public class FormulaError
+{
+    /// <summary>
+    ///     <para>
+    ///         Initializes a new instance of the <see cref="FormulaError"/> class.
+    ///     </para>
+    ///     <para>
+    ///         Constructs a FormulaError containing the explanatory reason.
+    ///     </para>
+    /// </summary>
+    /// <param name="message">Contains a message for why the error occurred.</param>
+    public FormulaError(string message)
+    {
+        Reason = message;
+    }
+
+    /// <summary>
+    ///     <para>
+    ///         Gets the reason why this FormulaError was created.
+    ///     </para>
+    /// </summary>
+    public string Reason { get; private set; }
+}
+
+/// <summary>
+///     <para>
+///         Used to report syntax errors in the argument to the <see cref="Formula"/> constructor. You can
+///         think of this as the compile-time version of <see cref="FormulaError"/>.
 ///     </para>
 /// </summary>
 public class FormulaFormatException : Exception
