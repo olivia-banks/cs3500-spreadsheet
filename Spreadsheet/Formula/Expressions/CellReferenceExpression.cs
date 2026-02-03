@@ -14,4 +14,20 @@ public record CellReferenceExpression(SyntaxSpan Span, int ColumnIndex, int RowI
 {
     /// <inheritdoc/>
     public override void Accept(IExpressionVisitor visitor) => visitor.Visit(this);
+    
+    /// <summary>
+    ///     <para>
+    ///         Gets the hash code for a cell reference, ignoring the span.
+    ///     </para>
+    /// </summary>
+    public override int GetHashCode() => HashCode.Combine(ColumnIndex, RowIndex);
+    
+    /// <inheritdoc/>
+    public virtual bool Equals(CellReferenceExpression? other)
+    {
+        if (ReferenceEquals(this, other)) return true;
+        if (other is null) return false;
+
+        return ColumnIndex == other.ColumnIndex && RowIndex == other.RowIndex;
+    }
 }
