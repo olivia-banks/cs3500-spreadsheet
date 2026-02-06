@@ -17,7 +17,21 @@ public class FormulaTests
     
     // GRADER: Tests covering canonicalization, dependency searching, evaluation, and hashing may be found
     //  in the FormulaTests.Expressions namespace, in their respective test classes.
-    
+
+    /// <summary>
+    ///     <para>
+    ///         Does the formula class handle zero-division errors correctly by returning a <see cref="FormulaError"/>
+    ///     </para>
+    /// </summary>
+    [TestMethod]
+    public void Formula_Evaluate_HandlesDivideByZero_ReturnsFormulaError()
+    {
+        var formula = new Formula("4 / 0");
+        var result = formula.Evaluate(s => 0);
+        
+        Assert.IsInstanceOfType(result, typeof(FormulaError));
+    }
+
     /// <summary>
     ///     <para>
     ///         These are integration tests, as written for PS1. There are too many tests to check the

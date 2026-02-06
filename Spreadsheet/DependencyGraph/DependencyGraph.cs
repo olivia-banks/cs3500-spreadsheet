@@ -10,8 +10,6 @@
 //   </para>
 // </summary>
 
-using System.Diagnostics;
-
 namespace DependencyGraph;
 
 /// <summary>
@@ -67,20 +65,12 @@ public class DependencyGraph
 
     /// <summary>
     ///     <para>
-    ///         A helper for traversing the graph.
-    ///     </para>
-    /// </summary>
-    private readonly GraphHelper<string, object?> _graphHelper;
-
-    /// <summary>
-    ///     <para>
     ///         Initializes a new, empty instance of the <see cref="DependencyGraph"/> class.
     ///     </para>
     /// </summary>
     public DependencyGraph()
     {
         _graph = new Graph<string, object?>();
-        _graphHelper = new GraphHelper<string, object?>(_graph);
     }
 
     /// <summary>
@@ -108,7 +98,7 @@ public class DependencyGraph
     /// <param name="nodeName">The name of the node.</param>
     public bool HasDependees(string nodeName)
         => _graph.NodeHasDependees(nodeName);
-    
+
     /// <summary>
     ///     <para>
     ///         Returns the dependents of the node with the given name, directly (i.e., only
@@ -120,7 +110,7 @@ public class DependencyGraph
     /// <exception cref="InvalidOperationException">Thrown if the node does not exist.</exception>
     public IEnumerable<string> GetDependents(string nodeName)
         => _graph.EnumerateNodeDependents(nodeName).Select(n => n.Key);
-    
+
     /// <summary>
     ///     <para>
     ///         Returns the dependees of the node with the given name, directly (i.e., only
@@ -132,36 +122,6 @@ public class DependencyGraph
     /// <exception cref="InvalidOperationException">Thrown if the node does not exist.</exception>
     public IEnumerable<string> GetDependees(string nodeName)
         => _graph.EnumerateNodeDependees(nodeName).Select(n => n.Key);
-    
-    /// <summary>
-    ///     <para>
-    ///         Returns the dependents of the node with the given name, recursively (i.e., all nodes that
-    ///         depend on it, either directly or indirectly).
-    ///     </para>
-    /// </summary>
-    /// <param name="nodeName">The node we are looking at.</param>
-    /// <returns>The dependents of nodeName.</returns>
-    /// <exception cref="InvalidOperationException">Thrown if the node does not exist.</exception>
-    public IEnumerable<string> GetAllDependents(string nodeName)
-        => _graphHelper.Traverse(
-            nodeName,
-            nodeKey => _graph.EnumerateNodeDependents(nodeKey)
-        ).Select(n => n.Key);
-
-    /// <summary>
-    ///     <para>
-    ///         Returns the dependees of the node with the given name, recursively (i.e., all nodes that
-    ///         it depends on, either directly or indirectly).
-    ///     </para>
-    /// </summary>
-    /// <param name="nodeName">The node we are looking at.</param>
-    /// <returns>The dependees of nodeName.</returns>
-    /// <exception cref="InvalidOperationException">Thrown if the node does not exist.</exception>
-    public IEnumerable<string> GetAllDependees(string nodeName)
-        => _graphHelper.Traverse(
-            nodeName,
-            nodeKey => _graph.EnumerateNodeDependees(nodeKey)
-        ).Select(n => n.Key);
 
     /// <summary>
     ///     <para>
@@ -231,9 +191,16 @@ public class DependencyGraph
         _graph.EnumerateNodeDependents(nodeName).ToList().ForEach(n => _graph.RemoveEdge(nodeName, n.Key));
 
         // Add new dependents.
-        foreach (var dependent in newDependents)
+        foreach (var newDependent in newDependents)
         {
-            _graph.AddEdge(nodeName, dependent);
+            _graph.CreateNodeIfNotExists(newDependent, null);
+            _graph.AddEdge(nodeName, newDependent);
+        }
+
+        // Remove node if it now has no edges (matches RemoveDependency logic/spec).
+        if (!_graph.NodeHasAnyEdges(nodeName))
+        {
+            _graph.RemoveNode(nodeName);
         }
     }
 
@@ -253,9 +220,16 @@ public class DependencyGraph
         _graph.EnumerateNodeDependees(nodeName).ToList().ForEach(n => _graph.RemoveEdge(n.Key, nodeName));
 
         // Add new dependees.
-        foreach (var dependee in newDependees)
+        foreach (var newDependee in newDependees)
         {
-            _graph.AddEdge(dependee, nodeName);
+            _graph.CreateNodeIfNotExists(newDependee, null);
+            _graph.AddEdge(newDependee, nodeName);
+        }
+
+        // Remove node if it now has no edges (matches RemoveDependency logic/spec).
+        if (!_graph.NodeHasAnyEdges(nodeName))
+        {
+            _graph.RemoveNode(nodeName);
         }
     }
 

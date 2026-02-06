@@ -80,6 +80,14 @@ public sealed class Graph<TKey, TValue>
     }
 
     /// <summary>
+    ///     <para>
+    ///         Does this graph have a node with the given key?
+    ///     </para>
+    /// </summary>
+    /// <param name="key">The key to check for existence in the graph.</param>
+    public bool ContainsNode(TKey key) => _nodes.ContainsKey(key);
+
+    /// <summary>
     ///     <para>Adds a directed edge from 'fromKey' to 'toKey'.</para>
     /// </summary>
     /// <param name="fromKey">The key of the source node.</param>
@@ -87,14 +95,14 @@ public sealed class Graph<TKey, TValue>
     /// <exception cref="InvalidOperationException">Thrown if either node does not exist.</exception>
     public void AddEdge(TKey fromKey, TKey toKey)
     {
-        if (!_nodes.TryGetValue(fromKey, out Node? value))
+        if (!_nodes.TryGetValue(fromKey, out var sourceNode))
             throw new InvalidOperationException("Source node does not exist.");
 
-        if (!_nodes.TryGetValue(toKey, out Node? value1))
+        if (!_nodes.TryGetValue(toKey, out var targetNode))
             throw new InvalidOperationException("Target node does not exist.");
-
-        value.Dependents.Add(toKey);
-        value1.Dependees.Add(fromKey);
+        
+        sourceNode.Dependents.Add(toKey);
+        targetNode.Dependees.Add(fromKey);
     }
 
     /// <summary>
