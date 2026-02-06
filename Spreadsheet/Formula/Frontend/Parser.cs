@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using Formula.Expressions;
 
 namespace Formula.Frontend;
@@ -200,12 +201,7 @@ public class Parser : IDisposable
                 // Failure here should not happen, since the tokenizer should only produce numeric literals
                 // that successfully parse as numbers (according to the course supplied regex). If it does,
                 // that's a bug in the tokenizer.
-                if (!double.TryParse(_current.Spelling, out var constantValue))
-                {
-                    throw new InvalidOperationException(
-                        "BUG: numeric literal failed to parse despite being tokenized as a numeric literal.");
-                }
-
+                Debug.Assert(double.TryParse(_current.Spelling, out var constantValue));
                 var constant = new ConstantExpression(_current.Span, constantValue);
                 Advance();
 
