@@ -308,6 +308,88 @@ public class DependencyGraphTests
 
     /// <summary>
     ///     <para>
+    ///         Test for determining if the <see cref="DependencyGraph.ReplaceDependents"/> method will work correctly
+    ///         when replacing dependents with an empty set, which should remove all dependents.
+    ///     </para>
+    /// </summary>
+    [TestMethod]
+    public void DependencyGraphIntegration_TestReplaceDependentsWithEmptySet_RemovesAllDependents()
+    {
+        DependencyGraph dg = new();
+
+        // Create a small graph with some dependencies.
+        // 
+        //   ┌───┐     ┌───┐
+        //   │ c │ ◀── │ a │
+        //   └───┘     └───┘
+        //               │
+        //               │
+        //               ▼
+        //             ┌───┐
+        //             │ b │
+        //             └───┘
+        //               │
+        //               │
+        //               ▼
+        //             ┌───┐
+        //             │ d │
+        //             └───┘
+
+        dg.AddDependency("a", "b");
+        dg.AddDependency("a", "c");
+        dg.AddDependency("b", "d");
+
+        // Replace the dependents of "a" with an empty set. This should remove all dependents of "a".
+        dg.ReplaceDependents("b", []);
+        dg.ReplaceDependents("a", []);
+
+        // Check that "a" has no dependents and that "b" and "c" have no dependees.
+        Assert.IsFalse(dg.HasDependees("c"));
+    }
+
+    /// <summary>
+    ///     <para>
+    ///         Test for determining if the <see cref="DependencyGraph.ReplaceDependees"/> method will work correctly
+    ///         when replacing dependees with an empty set, which should remove all dependees.
+    ///     </para>
+    /// </summary>
+    [TestMethod]
+    public void DependencyGraphIntegration_TestReplaceDependeesWithEmptySet_RemovesAllDependees()
+    {
+        DependencyGraph dg = new();
+        
+        // Create a small graph with some dependencies.
+        // 
+        //   ┌───┐     ┌───┐
+        //   │ c │ ◀── │ a │
+        //   └───┘     └───┘
+        //               │
+        //               │
+        //               ▼
+        //             ┌───┐
+        //             │ b │
+        //             └───┘
+        //               │
+        //               │
+        //               ▼
+        //             ┌───┐
+        //             │ d │
+        //             └───┘
+        
+        dg.AddDependency("a", "b");
+        dg.AddDependency("a", "c");
+        dg.AddDependency("b", "d");
+        
+        // Replace the dependees of "b" with an empty set. This should remove all dependees of "b".
+        dg.ReplaceDependees("b", []);
+        dg.ReplaceDependees("d", []);
+        
+        // Check that "b" has no dependees and that "a" has no dependents.
+        Assert.IsFalse(dg.HasDependees("b"));
+    }
+
+    /// <summary>
+    ///     <para>
     ///         Test for determining if the <see cref="DependencyGraph.ToDot"/> method returns a valid String.
     ///         Due to the relative complexity of the GraphvizDOT format, we don't do any validation here other
     ///         than making sure this doesn't throw an exception.

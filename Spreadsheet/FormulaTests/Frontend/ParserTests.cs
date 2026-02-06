@@ -43,7 +43,7 @@ public class ParserTests
     [TestMethod]
     public void ParserParseCellReferences_HugeCellReference_AreInvalid()
     {
-        var hugeCellReference = "A" + new string('1', 1000);
+        var hugeCellReference = "1 + A" + new string('1', 1000);
         var tokenizer = new Formula.Frontend.Tokenizer(hugeCellReference);
         var parser = new Formula.Frontend.Parser(tokenizer);
         Assert.ThrowsExactly<Formula.FormulaFormatException>(() => parser.Parse());

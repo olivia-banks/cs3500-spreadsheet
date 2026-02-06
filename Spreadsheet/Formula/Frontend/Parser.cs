@@ -106,7 +106,8 @@ public class Parser : IDisposable
             // If we hit an error token, that's a syntax error.
             if (_current.Kind is SyntaxTokenKind.Error)
             {
-                throw new FormulaFormatException($"{_current.Span}: unexpected token `{_current.Spelling}' found in expression.");
+                throw new FormulaFormatException(
+                    $"{_current.Span}: unexpected token `{_current.Spelling}' found in expression.");
             }
         } while (_current.Kind is SyntaxTokenKind.Trivia);
     }
@@ -275,18 +276,20 @@ public class Parser : IDisposable
             if (!int.TryParse(cellRepr[columnCursor..], out var rowIndex))
             {
                 throw new FormulaFormatException(
-                    $"{span}: invalid cell reference `{cellRepr}'; expected digits after column letters.");
+                    $"{span}: invalid cell reference `{cellRepr}'; too many digits.");
             }
 
             // Subtract 1 to get zero-based index.
             rowIndex = checked(rowIndex - 1);
-            
+
             return new CellReferenceExpression(span, columnIndex, rowIndex);
-        } catch (IndexOutOfRangeException)
-        {
-            throw new FormulaFormatException(
-                $"{span}: invalid cell reference `{cellRepr}'; expected letters followed by digits.");
         }
+        
+        //catch (IndexOutOfRangeException)
+        //{
+        //    throw new FormulaFormatException(
+        //        $"{span}: invalid cell reference `{cellRepr}'; expected letters followed by digits.");
+        //}
         catch (OverflowException)
         {
             throw new FormulaFormatException(
