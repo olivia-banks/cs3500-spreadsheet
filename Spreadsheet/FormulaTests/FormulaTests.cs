@@ -20,7 +20,7 @@ public class FormulaTests
 
     /// <summary>
     ///     <para>
-    ///         Does the formula class handle zero-division errors correctly by returning a <see cref="FormulaError"/>
+    ///         Does we handle zero-division errors correctly by returning a <see cref="FormulaError"/>
     ///     </para>
     /// </summary>
     [TestMethod]
@@ -30,6 +30,153 @@ public class FormulaTests
         var result = formula.Evaluate(s => 0);
         
         Assert.IsInstanceOfType(result, typeof(FormulaError));
+    }
+    
+    /// <summary>
+    ///     <para>
+    ///         Test that <see cref="Formula"/> can handle equality comparisons with another <see cref="Formula"/>
+    ///         that is mathematically equivalent but in a different form, without throwing exceptions or being
+    ///         incorrect.
+    ///     </para>
+    /// </summary>
+    [TestMethod]
+    public void FormulaEquals_HandlesDifferentFormsCorrectly_ReturnsTrue()
+    {
+        var formulaA = new Formula("4 / 1");
+        var formulaB = new Formula("4e0 / 1.0");
+        
+        Assert.IsTrue(formulaA.Equals(formulaB));
+    }
+    
+    /// <summary>
+    ///     <para>
+    ///         Test that <see cref="Formula"/> can handle equality comparisons with something that isn't a
+    ///         <see cref="Formula"/> without throwing exceptions or being incorrect.
+    ///     </para>
+    /// </summary>
+    [TestMethod]
+    public void FormulaEquals_HandlesNonFormulaComparison_ReturnsFalse()
+    {
+        var formula = new Formula("4 / 1");
+        const string nonFormula = "4 / 1";
+        
+        // ReSharper disable once SuspiciousTypeConversion.Global
+        Assert.IsFalse(formula.Equals(nonFormula));
+    }
+
+    /// <summary>
+    ///     <para>
+    ///         Test that <see cref="Formula"/> can handle equality comparisons with null without throwing
+    ///         exceptions or being incorrect.
+    ///     </para>
+    /// </summary>
+    [TestMethod]
+    public void FormulaEquals_HandlesNullComparison_ReturnsFalse()
+    {
+        var formula = new Formula("4 / 1");
+
+        Assert.IsFalse(formula.Equals(null));
+    }
+    
+    /// <summary>
+    ///     <para>
+    ///         Test that <see cref="Formula"/> can handle equality comparisons with itself without throwing
+    ///         exceptions or being incorrect.
+    ///     </para>
+    /// </summary>
+    [TestMethod]
+    public void FormulaEquals_HandlesSelfComparison_ReturnsTrue()
+    {
+        var formula = new Formula("4 / 1");
+        
+        // ReSharper disable once EqualExpressionComparison
+        Assert.IsTrue(formula == formula);
+    }
+    
+    /// <summary>
+    ///     <para>
+    ///         Test that <see cref="Formula"/> can handle equality comparisons another formula, when there is a
+    ///         bad formula in the mix, without throwing exceptions or being incorrect.
+    ///     </para>
+    /// </summary>
+    [TestMethod]
+    public void FormulaEquals_HandlesComparisonWithBadFormula_ReturnsFalse()
+    {
+        var formulaA = new Formula("4 / 1");
+        var formulaB = new Formula("4 / 0");
+        
+        Assert.IsTrue(formulaA != formulaB);
+    }
+    
+    /// <summary>
+    ///     <para>
+    ///         Test that <see cref="Formula"/> returns a stable hash code for the same formula, even if it is in a
+    ///         different form. This is primarily a test for the consistency of the hash code implementation.
+    ///     </para>
+    /// </summary>
+    [TestMethod]
+    public void FormulaGetHashCode_HandlesEquivalentFormulas_ReturnsSameHashCode()
+    {
+        var formulaA = new Formula("4 / 1");
+        var formulaB = new Formula("4e0 / 1.0");
+        
+        Assert.AreEqual(formulaA.GetHashCode(), formulaB.GetHashCode());
+    }
+    
+    /// <para>
+    ///     <summary>
+    ///         Test that <see cref="Formula"/> returns the same hash code for the same formula, when called multiple
+    ///         times. This is primarily a test for the stability of the hash code implementation.
+    ///     </summary>
+    /// </para>
+    [TestMethod]
+    public void FormulaGetHashCode_HandlesMultipleCalls_ReturnsSameHashCode()
+    {
+        var formula = new Formula("4 / 1");
+        var hashCode1 = formula.GetHashCode();
+        var hashCode2 = formula.GetHashCode();
+        
+        Assert.AreEqual(hashCode1, hashCode2);
+    }
+    
+    /// <para>
+    ///     <summary>
+    ///         Test that <see cref="Formula.GetVariables"/> returns a correct, non-duplicated set of references
+    ///         cells.
+    ///     </summary>
+    /// </para>
+    [TestMethod]
+    public void FormulaGetVariables_ReturnsCorrectSetOfVariables()
+    {
+        var formula = new Formula("x1 + y2 - z3 + x1 * y2");
+        var variables = formula.GetVariables();
+        
+        Assert.IsTrue(variables.SetEquals([ "X1", "Y2", "Z3" ]));
+    }
+    
+    /// <para>
+    ///     <summary>
+    ///         Test that <see cref="Formula.Evaluate" /> is able to handle a formula that references variables, and
+    ///         that it correctly uses the provided lookup function to evaluate the formula. This is primarily a test
+    ///         for the integration of variable lookup and evaluation.
+    ///     </summary>
+    /// </para>
+    [TestMethod]
+    public void FormulaEvaluate_HandlesVariableReferences_ReturnsCorrectValue()
+    {
+        var formula = new Formula("x1 + y2 - z3");
+        var result = formula.Evaluate(s =>
+        {
+            return s switch
+            {
+                "X1" => 10,
+                "Y2" => 5,
+                "Z3" => 3,
+                _ => throw new ArgumentException("Unexpected variable")
+            };
+        });
+        
+        Assert.AreEqual(12.0, result);
     }
 
     /// <summary>

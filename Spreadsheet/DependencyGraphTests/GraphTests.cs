@@ -286,6 +286,9 @@ public class GraphTests
         var hasEdges = graph.NodeHasAnyEdges(1);
 
         // Assert
+        Assert.IsTrue(graph.ContainsNode(1));
+        Assert.IsNotNull(graph.GetNode(1));
+        Assert.IsNotNull(graph.EnumerateNodes());
         Assert.IsFalse(hasEdges);
     }
 
