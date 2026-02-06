@@ -311,4 +311,31 @@ public class GraphTests
         // Assert
         Assert.IsTrue(hasEdges);
     }
+
+    /// <summary>
+    ///     <para>
+    ///         Tests that everything is okay if we remove the entire graph and then add new nodes and edges to it.
+    ///     </para>
+    /// </summary>
+    [TestMethod]
+    public void GraphRemoveNode_TestRemoveEntireGraph_AddNewNodesAndEdges()
+    {
+        // Arrange
+        var graph = new Graph<int, string>();
+        graph.AddNode(1, "A");
+        graph.AddNode(2, "B");
+        graph.AddNode(3, "C");
+        graph.AddEdge(1, 2);
+        graph.AddEdge(2, 3);
+        graph.AddEdge(1, 3);
+        graph.AddEdge(3, 1);
+        
+        // Act
+        graph.RemoveNode(1);
+        graph.RemoveNode(2);
+        graph.RemoveNode(3);
+
+        // Assert
+        Assert.AreEqual(0, graph.NodeCount);
+    }
 }
