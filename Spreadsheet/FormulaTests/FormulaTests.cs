@@ -14,7 +14,7 @@ public class FormulaTests
     // NOTE: Many tests here have been moved into their respective test classes in FormulaTests.Expressions
     //  to improve organization and clarity. This class now primarily serves to hold integration tests
     //  that cover multiple rules at once.
-    
+
     // GRADER: Tests covering canonicalization, dependency searching, evaluation, and hashing may be found
     //  in the FormulaTests.Expressions namespace, in their respective test classes.
 
@@ -28,10 +28,10 @@ public class FormulaTests
     {
         var formula = new Formula("4 / 0");
         var result = formula.Evaluate(s => 0);
-        
+
         Assert.IsInstanceOfType(result, typeof(FormulaError));
     }
-    
+
     /// <summary>
     ///     <para>
     ///         Test that <see cref="Formula"/> can handle equality comparisons with another <see cref="Formula"/>
@@ -44,10 +44,10 @@ public class FormulaTests
     {
         var formulaA = new Formula("4 / 1");
         var formulaB = new Formula("4e0 / 1.0");
-        
+
         Assert.IsTrue(formulaA.Equals(formulaB));
     }
-    
+
     /// <summary>
     ///     <para>
     ///         Test that <see cref="Formula"/> can handle equality comparisons with something that isn't a
@@ -59,7 +59,7 @@ public class FormulaTests
     {
         var formula = new Formula("4 / 1");
         const string nonFormula = "4 / 1";
-        
+
         // ReSharper disable once SuspiciousTypeConversion.Global
         Assert.IsFalse(formula.Equals(nonFormula));
     }
@@ -77,7 +77,7 @@ public class FormulaTests
 
         Assert.IsFalse(formula.Equals(null));
     }
-    
+
     /// <summary>
     ///     <para>
     ///         Test that <see cref="Formula"/> can handle equality comparisons with itself without throwing
@@ -88,11 +88,13 @@ public class FormulaTests
     public void FormulaEquals_HandlesSelfComparison_ReturnsTrue()
     {
         var formula = new Formula("4 / 1");
-        
+
         // ReSharper disable once EqualExpressionComparison
+#pragma warning disable CS1718 // (needed for code coverage of self-comparison)
         Assert.IsTrue(formula == formula);
+#pragma warning restore CS1718
     }
-    
+
     /// <summary>
     ///     <para>
     ///         Test that <see cref="Formula"/> can handle equality comparisons another formula, when there is a
@@ -104,10 +106,10 @@ public class FormulaTests
     {
         var formulaA = new Formula("4 / 1");
         var formulaB = new Formula("4 / 0");
-        
+
         Assert.IsTrue(formulaA != formulaB);
     }
-    
+
     /// <summary>
     ///     <para>
     ///         Test that <see cref="Formula"/> returns a stable hash code for the same formula, even if it is in a
@@ -119,10 +121,10 @@ public class FormulaTests
     {
         var formulaA = new Formula("4 / 1");
         var formulaB = new Formula("4e0 / 1.0");
-        
+
         Assert.AreEqual(formulaA.GetHashCode(), formulaB.GetHashCode());
     }
-    
+
     /// <para>
     ///     <summary>
     ///         Test that <see cref="Formula"/> returns the same hash code for the same formula, when called multiple
@@ -135,10 +137,10 @@ public class FormulaTests
         var formula = new Formula("4 / 1");
         var hashCode1 = formula.GetHashCode();
         var hashCode2 = formula.GetHashCode();
-        
+
         Assert.AreEqual(hashCode1, hashCode2);
     }
-    
+
     /// <para>
     ///     <summary>
     ///         Test that <see cref="Formula.GetVariables"/> returns a correct, non-duplicated set of references
@@ -150,10 +152,10 @@ public class FormulaTests
     {
         var formula = new Formula("x1 + y2 - z3 + x1 * y2");
         var variables = formula.GetVariables();
-        
-        Assert.IsTrue(variables.SetEquals([ "X1", "Y2", "Z3" ]));
+
+        Assert.IsTrue(variables.SetEquals(["X1", "Y2", "Z3"]));
     }
-    
+
     /// <para>
     ///     <summary>
     ///         Test that <see cref="Formula.Evaluate" /> is able to handle a formula that references variables, and
@@ -175,10 +177,10 @@ public class FormulaTests
                 _ => throw new ArgumentException("Unexpected variable")
             };
         });
-        
+
         Assert.AreEqual(12.0, result);
     }
-    
+
     /// <summary>
     ///     <para>
     ///         These are integration tests, as written for PS1. There are too many tests to check the
@@ -977,7 +979,8 @@ public class FormulaTests
         [TestMethod]
         public void FormulaConstructor_TestExtremelyLongVariableReference_IsTooLong()
         {
-            Assert.ThrowsExactly<FormulaFormatException>(() => new Formula(@"wIlLALoNgbItoFTeXtiNMoCkInGCaSebReAktHefOrMuLacLaSsaaa42"));
+            Assert.ThrowsExactly<FormulaFormatException>(() =>
+                new Formula(@"wIlLALoNgbItoFTeXtiNMoCkInGCaSebReAktHefOrMuLacLaSsaaa42"));
         }
 
 
