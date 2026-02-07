@@ -149,4 +149,22 @@ public class ExpressionCanonicalizerTests
 
         Assert.AreEqual(canonical1.CanonicalForm, canonical2.CanonicalForm);
     }
+    
+    /// <summary>
+    ///     <para>
+    ///         Tests that a <see cref="ArgumentOutOfRangeException" /> will be thrown on a bad binary operator.
+    ///     </para>
+    /// </summary>
+    [TestMethod]
+    public void ExpressionEvaluatorVisitBinaryOpExpression_TestInvalidOperator_ThrowsArgumentOutOfRangeException()
+    {
+        var binaryExpression = new BinaryOpExpression(
+            new SyntaxSpan(0, 3),
+            (BinaryOpKind.Addition + 100),
+            new ConstantExpression(new SyntaxSpan(0, 1), 1),
+            new ConstantExpression(new SyntaxSpan(2, 1), 2)
+        );
+        
+        Assert.ThrowsExactly<ArgumentOutOfRangeException>(() => new ExpressionCanonicalizer(binaryExpression));
+    }
 }

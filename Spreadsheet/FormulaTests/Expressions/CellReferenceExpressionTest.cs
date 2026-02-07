@@ -29,7 +29,25 @@ public class CellReferenceExpressionTest
         // Assert
         Assert.IsTrue(areEqual);
     }
+    
+    /// <summary>
+    ///     <para>
+    ///         Check for inequality of two same cell reference expressions.
+    ///     </para>
+    /// </summary>
+    [TestMethod]
+    public void CellReferenceExpressionEquals_TwoDifferentFormulas_EqualityIsTrue()
+    {
+        // Arrange
+        var expr = new CellReferenceExpression(new SyntaxSpan(0, 2), 0, 0);
 
+        // Act
+        var areEqual = expr.Equals(expr);
+        
+        // Assert
+        Assert.IsTrue(areEqual);
+    }
+        
     /// <summary>
     ///     <para>
     ///         Check for inequality of two cell reference expressions where one is null.
@@ -40,10 +58,9 @@ public class CellReferenceExpressionTest
     {
         // Arrange
         var expr1 = new CellReferenceExpression(new SyntaxSpan(0, 2), 0, 0);
-        CellReferenceExpression? expr2 = null;
 
         // Act
-        var areEqual = expr1.Equals(expr2);
+        var areEqual = expr1.Equals(null);
 
         // Assert
         Assert.IsFalse(areEqual);

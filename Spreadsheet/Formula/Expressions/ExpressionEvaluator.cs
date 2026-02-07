@@ -47,7 +47,8 @@ public class ExpressionEvaluator : IExpressionVisitor
     /// </exception>
     public ExpressionEvaluator(Expression expression, Func<int, int, double> cellLookup)
     {
-        _cellLookup = cellLookup;
+        _cellLookup = cellLookup ?? throw new ArgumentNullException(nameof(cellLookup), "Cell lookup function cannot be null.");
+        
         expression.Accept(this);
     }
 

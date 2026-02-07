@@ -191,4 +191,53 @@ public class ExpressionEvaluatorTests
         // (5+2)*3 = 21
         Assert.AreEqual(21, evaluator.Result);
     }
+
+    /// <summary>
+    ///     <para>
+    ///         Tests that providing a null cell lookup function throws an <see cref="ArgumentNullException"/>.
+    ///     </para>
+    /// </summary>
+    [TestMethod]
+    public void ExpressionEvaluatorConstructor_TestNullCellLookup_ThrowsArgumentNullException()
+    {
+        var tokenizer = new Tokenizer("A1");
+        using var parser = new Parser(tokenizer.Tokens());
+        var expression = parser.Parse();
+
+        Assert.ThrowsExactly<ArgumentNullException>(() => new ExpressionEvaluator(expression, null!));
+    }
+
+    /// <summary>
+    ///     <para>
+    ///         Tests that dividing a cell reference by zero throws a <see cref="DivideByZeroException"/>.
+    ///     </para>
+    /// </summary>
+    [TestMethod]
+    public void ExpressionEvaluatorConstructor_TestCellReferenceDivisionByZero_ThrowsDivideByZeroException()
+    {
+        var formula = "A1/0";
+        var tokenizer = new Tokenizer(formula);
+        using var parser = new Parser(tokenizer.Tokens());
+        var expression = parser.Parse();
+
+        Assert.ThrowsExactly<DivideByZeroException>(() => new ExpressionEvaluator(expression, (_, _) => 0));
+    }
+
+    /// <summary>
+    ///     <para>
+    ///         Tests that a <see cref="ArgumentOutOfRangeException" /> will be thrown on a bad binary operator.
+    ///     </para>
+    /// </summary>
+    [TestMethod]
+    public void ExpressionEvaluatorVisitBinaryOpExpression_TestInvalidOperator_ThrowsArgumentOutOfRangeException()
+    {
+        var binaryExpression = new BinaryOpExpression(
+            new SyntaxSpan(0, 3),
+            (BinaryOpKind.Addition + 100),
+            new ConstantExpression(new SyntaxSpan(0, 1), 1),
+            new ConstantExpression(new SyntaxSpan(2, 1), 2)
+        );
+        
+        Assert.ThrowsExactly<ArgumentOutOfRangeException>(() => new ExpressionEvaluator(binaryExpression, (_, _) => 0));
+    }
 }
