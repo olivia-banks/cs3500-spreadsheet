@@ -25,8 +25,8 @@ public record CellReferenceExpression(SyntaxSpan Span, int ColumnIndex, int RowI
     /// <inheritdoc/>
     public virtual bool Equals(CellReferenceExpression? other)
     {
-        if (ReferenceEquals(this, other)) return true;
         if (other is null) return false;
+        if (ReferenceEquals(this, other)) return true;
 
         return ColumnIndex == other.ColumnIndex && RowIndex == other.RowIndex;
     }
