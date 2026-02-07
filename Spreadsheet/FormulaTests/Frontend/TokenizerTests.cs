@@ -36,4 +36,35 @@ public class TokenizerTests
         Assert.AreEqual(SyntaxTokenKind.CellReference, tokens[6].Kind);
         Assert.AreEqual(SyntaxTokenKind.Eoi, tokens[7].Kind);
     }
+
+    /// <summary>
+    ///     <para>
+    ///         This test tries to tokenize a formula string with an invalid character in the last position.
+    ///     </para>
+    /// </summary>
+    [TestMethod]
+    public void TokenizerTokens_InvalidCharacterAtEndOfFormulaString_ThrowsErrorToken()
+    {
+        // The `@` character is not valid in our formula language, so it should be tokenized as an error.
+        var tokenizer = new Tokenizer("A1 + 2 @");
+        var tokens = tokenizer.Tokens().Where(t => t.Kind != SyntaxTokenKind.Trivia).ToList();
+        Assert.IsNotNull(tokens);
+        Assert.HasCount(5, tokens);
+    }
+
+    /// <summary>
+    ///     <para>
+    ///         This test tries to tokenize a formula string with multiple invalid characters in the middle of the
+    ///         string.
+    ///     </para>
+    /// </summary>
+    [TestMethod]
+    public void TokenizerTokens_MultipleInvalidCharactersInMiddleOfFormulaString_ThrowsErrorTokens()
+    {
+        // The `@` and `#` characters are not valid in our formula language, so they should be tokenized as errors.
+        var tokenizer = new Tokenizer("A1 + @2 #");
+        var tokens = tokenizer.Tokens().Where(t => t.Kind != SyntaxTokenKind.Trivia).ToList();
+        Assert.IsNotNull(tokens);
+        Assert.HasCount(6, tokens);
+    }
 }

@@ -329,11 +329,74 @@ public class GraphTests
         graph.AddEdge(2, 3);
         graph.AddEdge(1, 3);
         graph.AddEdge(3, 1);
-        
+
         // Act
         graph.RemoveNode(1);
         graph.RemoveNode(2);
         graph.RemoveNode(3);
+
+        // Assert
+        Assert.AreEqual(0, graph.NodeCount);
+    }
+
+    /// <summary>
+    ///     <para>
+    ///         Tests that we fail to enumerate dependents of a node that does not exist.
+    ///     </para>
+    /// </summary>
+    [TestMethod]
+    public void GraphEnumerateNodeDependents_TestNodeDoesNotExist_ThrowsInvalidOperationException()
+    {
+        // Arrange
+        var graph = new Graph<int, string>();
+
+        // Act
+        Assert.ThrowsExactly<InvalidOperationException>(() => graph.EnumerateNodeDependents(1).ToList());
+    }
+    
+    /// <summary>
+    ///     <para>
+    ///         Tests that we fail to enumerate dependees of a node that does not exist.
+    ///     </para>
+    /// </summary>
+    [TestMethod]
+    public void GraphEnumerateNodeDependees_TestNodeDoesNotExist_ThrowsInvalidOperationException()
+    {
+        // Arrange
+        var graph = new Graph<int, string>();
+
+        // Act
+        Assert.ThrowsExactly<InvalidOperationException>(() => graph.EnumerateNodeDependees(1).ToList());
+    }
+
+    /// <summary>
+    ///     <para>
+    ///         Tests that we fail to get the value of a node that does not exist.
+    ///     </para>
+    /// </summary>
+    [TestMethod]
+    public void GraphGetValue_TestNodeDoesNotExist_ThrowsInvalidOperationException()
+    {
+        // Arrange
+        var graph = new Graph<int, string>();
+
+        // Act
+        Assert.ThrowsExactly<InvalidOperationException>(() => graph.GetValue(1));
+    }
+
+    /// <summary>
+    ///     <para>
+    ///         Tests that we don't fail to remove a node that does not exist.
+    ///     </para>
+    /// </summary>
+    [TestMethod]
+    public void GraphRemoveNode_TestNodeDoesNotExist_DoesNotThrow()
+    {
+        // Arrange
+        var graph = new Graph<int, string>();
+
+        // Act
+        graph.RemoveNode(1);
 
         // Assert
         Assert.AreEqual(0, graph.NodeCount);
