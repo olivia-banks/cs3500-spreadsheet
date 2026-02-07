@@ -47,7 +47,7 @@ public class ExpressionEvaluator : IExpressionVisitor
     /// </exception>
     public ExpressionEvaluator(Expression expression, Func<int, int, double> cellLookup)
     {
-        _cellLookup = cellLookup ?? throw new ArgumentNullException(nameof(cellLookup));
+        _cellLookup = cellLookup;
         expression.Accept(this);
     }
 

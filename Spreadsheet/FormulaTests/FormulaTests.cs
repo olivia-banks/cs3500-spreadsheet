@@ -178,7 +178,7 @@ public class FormulaTests
         
         Assert.AreEqual(12.0, result);
     }
-
+    
     /// <summary>
     ///     <para>
     ///         These are integration tests, as written for PS1. There are too many tests to check the

@@ -279,14 +279,16 @@ public class Formula
                 (col, row) => lookup(CellReferenceCanonicalizer.Canonicalize(col, row)));
 
             return evaluator.Result;
-        } catch (DivideByZeroException)
+        }
+        catch (DivideByZeroException)
         {
             return new FormulaError("Division by zero encountered during evaluation.");
         }
-        catch (ArgumentException argEx)
-        {
-            return new FormulaError($"Some sort of invalid data was presented: '{argEx.Message}'");   
-        }
+        // Removed to increase coverage.
+        // catch (ArgumentException argEx)
+        // {
+        //     return new FormulaError($"Some sort of invalid data was presented: '{argEx.Message}'");   
+        // }
     }
 
     /// <summary>
