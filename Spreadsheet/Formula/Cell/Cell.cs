@@ -82,9 +82,9 @@ public readonly struct Cell
     public object AsObject() =>
         Kind switch
         {
-            CellKind.Number => _number,
-            CellKind.Text => _text!,
-            CellKind.Formula => _formula!,
+            CellKind.Number => AsNumber(),
+            CellKind.Text => AsText(),
+            CellKind.Formula => AsFormula(),
             _ => throw new InvalidOperationException()
         };
 }

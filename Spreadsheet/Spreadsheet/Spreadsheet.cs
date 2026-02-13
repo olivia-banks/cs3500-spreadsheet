@@ -203,27 +203,20 @@ public class Spreadsheet
     /// <exception cref="InvalidNameException"></exception>
     public IList<CellLocation> SetCellContents(CellLocation location, Cell cell)
     {
-        try
+        var name = location.ToCanonicalString();
+
+        // Remove any existing dependees (we are replacing the cell)
+        _dependencyGraph.ReplaceDependees(name, []);
+
+        // If the new contents is a formula, register its dependencies
+        if (cell.AsObject() is Formula formula)
         {
-            var name = location.ToCanonicalString();
-
-            // Remove any existing dependees (we are replacing the cell)
-            _dependencyGraph.ReplaceDependees(name, []);
-
-            // If the new contents is a formula, register its dependencies
-            if (cell.AsObject() is Formula formula)
-            {
-                var variables = formula.GetVariables();
-                _dependencyGraph.ReplaceDependees(name, variables);
-            }
-
-            _cells[location] = cell;
-            return GetCellsToRecalculate(location).ToList();
+            var variables = formula.GetVariables();
+            _dependencyGraph.ReplaceDependees(name, variables);
         }
-        catch (ArgumentException)
-        {
-            throw new InvalidNameException();
-        }
+
+        _cells[location] = cell;
+        return GetCellsToRecalculate(location).ToList();
     }
 
     /// <summary>
@@ -286,7 +279,7 @@ public class Spreadsheet
     /// <returns>The same list as defined in <see cref="SetCellContents(string, double)"/>.</returns>
     public IList<string> SetCellContents(string name, Formula formula)
         => SetCellContents(locationOfReference(name), new Cell(formula))
-                .Select(c => CellLocation.Canonicalize(c.ColumnIndex, c.RowIndex)).ToList();
+            .Select(c => CellLocation.Canonicalize(c.ColumnIndex, c.RowIndex)).ToList();
 
     /// <summary>
     ///   <para>
