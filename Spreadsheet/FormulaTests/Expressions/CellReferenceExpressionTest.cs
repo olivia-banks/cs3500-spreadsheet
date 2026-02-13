@@ -1,3 +1,5 @@
+using Formula.Cell;
+
 namespace FormulaTests.Expressions;
 
 using Formula.Expressions;
@@ -20,8 +22,8 @@ public class CellReferenceExpressionTest
     public void CellReferenceExpressionEquals_TwoIdenticalFormulas_EqualityIsShown()
     {
         // Arrange
-        var expr1 = new CellReferenceExpression(new SyntaxSpan(0, 2), 0, 0);
-        var expr2 = new CellReferenceExpression(new SyntaxSpan(5, 2), 0, 0);
+        var expr1 = new CellReferenceExpression(new SyntaxSpan(0, 2), new CellLocation(0, 0));
+        var expr2 = new CellReferenceExpression(new SyntaxSpan(5, 2), new CellLocation(0, 0));
         
         // Act
         var areEqual = expr1.Equals(expr2);
@@ -39,7 +41,7 @@ public class CellReferenceExpressionTest
     public void CellReferenceExpressionEquals_TwoDifferentFormulas_EqualityIsTrue()
     {
         // Arrange
-        var expr = new CellReferenceExpression(new SyntaxSpan(0, 2), 0, 0);
+        var expr = new CellReferenceExpression(new SyntaxSpan(0, 2), new CellLocation(0, 0));
 
         // Act
         var areEqual = expr.Equals(expr);
@@ -57,7 +59,7 @@ public class CellReferenceExpressionTest
     public void CellReferenceExpressionEquals_OneNull_EqualityIsFalse()
     {
         // Arrange
-        var expr1 = new CellReferenceExpression(new SyntaxSpan(0, 2), 0, 0);
+        var expr1 = new CellReferenceExpression(new SyntaxSpan(0, 2), new CellLocation(0, 0));
 
         // Act
         var areEqual = expr1.Equals(null);

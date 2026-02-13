@@ -11,7 +11,7 @@
 //   </para>
 // </summary>
 
-using Formula.Util;
+using Formula.Cell;
 using Formula.Expressions;
 using Formula.Frontend;
 
@@ -175,8 +175,7 @@ public class Formula
         // CellReferenceExpressions.
         foreach (var dependency in dependencies)
         {
-            humanReadableDependencies.Add(
-                CellReferenceCanonicalizer.Canonicalize(dependency.ColumnIndex, dependency.RowIndex));
+            humanReadableDependencies.Add(dependency.location.ToCanonicalString());
         }
 
         return humanReadableDependencies;
@@ -276,7 +275,7 @@ public class Formula
         try
         {
             var evaluator = new ExpressionEvaluator(_expression,
-                (col, row) => lookup(CellReferenceCanonicalizer.Canonicalize(col, row)));
+                (col, row) => lookup(CellLocation.Canonicalize(col, row)));
 
             return evaluator.Result;
         }

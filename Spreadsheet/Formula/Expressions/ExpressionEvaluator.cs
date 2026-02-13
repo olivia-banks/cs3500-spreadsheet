@@ -76,7 +76,7 @@ public class ExpressionEvaluator : IExpressionVisitor
     /// <inheritdoc />
     public void Visit(CellReferenceExpression cellRef)
     {
-        _result = _cellLookup(cellRef.ColumnIndex, cellRef.RowIndex);
+        _result = _cellLookup(cellRef.location.ColumnIndex, cellRef.location.RowIndex);
     }
 
     /// <inheritdoc />

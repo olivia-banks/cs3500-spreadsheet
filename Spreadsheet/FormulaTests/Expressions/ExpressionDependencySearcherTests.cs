@@ -46,8 +46,8 @@ public class ExpressionDependencySearcherTests
         Assert.HasCount(1, searcher.Dependencies);
 
         var cell = searcher.Dependencies.First();
-        Assert.AreEqual(0, cell.ColumnIndex);
-        Assert.AreEqual(0, cell.RowIndex);
+        Assert.AreEqual(0, cell.location.ColumnIndex);
+        Assert.AreEqual(0, cell.location.RowIndex);
     }
 
     /// <summary>
@@ -65,8 +65,8 @@ public class ExpressionDependencySearcherTests
         var searcher = new ExpressionDependencySearcher(expression);
 
         Assert.HasCount(2, searcher.Dependencies);
-        Assert.IsTrue(searcher.Dependencies.Any(c => c.ColumnIndex == 0 && c.RowIndex == 0));
-        Assert.IsTrue(searcher.Dependencies.Any(c => c.ColumnIndex == 1 && c.RowIndex == 1));
+        Assert.IsTrue(searcher.Dependencies.Any(c => c.location.ColumnIndex == 0 && c.location.RowIndex == 0));
+        Assert.IsTrue(searcher.Dependencies.Any(c => c.location.ColumnIndex == 1 && c.location.RowIndex == 1));
     }
 
     /// <summary>
@@ -85,8 +85,8 @@ public class ExpressionDependencySearcherTests
         Assert.HasCount(1, searcher.Dependencies);
 
         var cell = searcher.Dependencies.First();
-        Assert.AreEqual(2, cell.ColumnIndex);
-        Assert.AreEqual(2, cell.RowIndex);
+        Assert.AreEqual(2, cell.location.ColumnIndex);
+        Assert.AreEqual(2, cell.location.RowIndex);
     }
 
     /// <summary>
@@ -105,8 +105,8 @@ public class ExpressionDependencySearcherTests
         Assert.HasCount(1, searcher.Dependencies);
 
         var cell = searcher.Dependencies.First();
-        Assert.AreEqual(0, cell.ColumnIndex);
-        Assert.AreEqual(0, cell.RowIndex);
+        Assert.AreEqual(0, cell.location.ColumnIndex);
+        Assert.AreEqual(0, cell.location.RowIndex);
     }
 
     /// <summary>
@@ -124,9 +124,9 @@ public class ExpressionDependencySearcherTests
         var searcher = new ExpressionDependencySearcher(expression);
 
         Assert.HasCount(3, searcher.Dependencies);
-        Assert.IsTrue(searcher.Dependencies.Any(c => c.ColumnIndex == 0 && c.RowIndex == 0)); // A1
-        Assert.IsTrue(searcher.Dependencies.Any(c => c.ColumnIndex == 1 && c.RowIndex == 1)); // B2
-        Assert.IsTrue(searcher.Dependencies.Any(c => c.ColumnIndex == 2 && c.RowIndex == 2)); // C3
+        Assert.IsTrue(searcher.Dependencies.Any(c => c.location is { ColumnIndex: 0, RowIndex: 0 })); // A1
+        Assert.IsTrue(searcher.Dependencies.Any(c => c.location is { ColumnIndex: 1, RowIndex: 1 })); // B2
+        Assert.IsTrue(searcher.Dependencies.Any(c => c.location is { ColumnIndex: 2, RowIndex: 2 })); // C3
     }
 
     /// <summary>
@@ -144,7 +144,7 @@ public class ExpressionDependencySearcherTests
         var searcher = new ExpressionDependencySearcher(expression);
         Assert.HasCount(1, searcher.Dependencies);
         var cell = searcher.Dependencies.First();
-        Assert.AreEqual(0, cell.ColumnIndex);
-        Assert.AreEqual(0, cell.RowIndex);
+        Assert.AreEqual(0, cell.location.ColumnIndex);
+        Assert.AreEqual(0, cell.location.RowIndex);
     }
 }

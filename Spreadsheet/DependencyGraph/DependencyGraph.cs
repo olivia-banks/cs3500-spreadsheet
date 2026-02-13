@@ -53,6 +53,12 @@ namespace DependencyGraph;
 ///         dependees("c")  = {"a"}
 ///         dependees("d")  = {"b", "d"}
 ///     </code>
+///     <para>
+///         This code should seriouslly, seriously use the Cell class from Formula.Cell, but we can't add a reference,
+///         lest we break the autograder. So, we will use strings to represent the nodes in the graph, and we will
+///         assume that the client code is using the graph to represent dependencies between cells in a spreadsheet,
+///         where the string names of the nodes are the cell names (e.g., "A1", "B2", etc.).
+///     </para>
 /// </summary>
 public class DependencyGraph
 {
@@ -161,18 +167,6 @@ public class DependencyGraph
     public void RemoveDependency(string dependee, string dependent)
     {
         _graph.RemoveEdge(dependee, dependent);
-
-        // Do some cleanup to remove nodes with no edges.
-        if (!_graph.NodeHasAnyEdges(dependee))
-        {
-            _graph.RemoveNode(dependee);
-        }
-
-        // ReSharper disable once InvertIf
-        if (!_graph.NodeHasAnyEdges(dependent))
-        {
-            _graph.RemoveNode(dependent);
-        }
     }
 
     /// <summary>
@@ -196,12 +190,6 @@ public class DependencyGraph
             _graph.CreateNodeIfNotExists(newDependent, null);
             _graph.AddEdge(nodeName, newDependent);
         }
-
-        // Remove node if it now has no edges (matches RemoveDependency logic/spec).
-        if (!_graph.NodeHasAnyEdges(nodeName))
-        {
-            _graph.RemoveNode(nodeName);
-        }
     }
 
     /// <summary>
@@ -216,6 +204,8 @@ public class DependencyGraph
     /// <param name="newDependees">The new dependees for nodeName.</param>
     public void ReplaceDependees(string nodeName, IEnumerable<string> newDependees)
     {
+        _graph.CreateNodeIfNotExists(nodeName, null);
+        
         // Remove all existing dependees.
         _graph.EnumerateNodeDependees(nodeName).ToList().ForEach(n => _graph.RemoveEdge(n.Key, nodeName));
 
@@ -224,12 +214,6 @@ public class DependencyGraph
         {
             _graph.CreateNodeIfNotExists(newDependee, null);
             _graph.AddEdge(newDependee, nodeName);
-        }
-
-        // Remove node if it now has no edges (matches RemoveDependency logic/spec).
-        if (!_graph.NodeHasAnyEdges(nodeName))
-        {
-            _graph.RemoveNode(nodeName);
         }
     }
 

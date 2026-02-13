@@ -1,0 +1,18 @@
+In theory, this should be it's own project. Because of the API required to be exposed per the assignment description
+being very string-oriented, and my want to have a more type-safe API, I decided to implement said API, and then use
+wrappers to convert between the string-based API and the type-safe API. This way, I can have the best of both worlds,
+and I can also easily test the type-safe API without having to worry about the string parsing.
+
+However, this creates the need to separate out the normally in-line conversion functions. This would normally be fine,
+except that we can't create a new project in the solution to hold these functions, per the assignment description.
+
+> As always, don't reference any projects not mentioned here.
+
+To solve this problem, I decided to create a new folder called "Cell" in the Formula project, which handles converting
+to and from cell references, cell data, cell ranges, et cetera, et cetera. This makes me deeply unhappy, but it's the
+best solution I could come up with given the constraints of the assignment.
+
+The reason this isn't in "Spreadsheet," where it would likely fit better, is because this would create a circular
+dependency between the two projects, which is something I want to avoid at all costs. The Cell folder is a bit of a
+hack, but it allows me to keep the type-safe API in the Formula project, while still being able to expose the
+string-based API required by the assignment description.

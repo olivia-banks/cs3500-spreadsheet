@@ -1,4 +1,5 @@
 using System.Diagnostics;
+using Formula.Cell;
 using Formula.Expressions;
 
 namespace Formula.Frontend;
@@ -222,10 +223,19 @@ public class Parser : IDisposable
                 return constant;
 
             case SyntaxTokenKind.CellReference:
-                var cellReference = ParseCellReference(_current.Span, _current.Spelling);
-                Advance();
+                try
+                {
+                    var cellLocation = CellLocation.FromString(_current.Spelling);
+                    var cellReference = new CellReferenceExpression(_current.Span, cellLocation);
+                    Advance();
 
-                return cellReference;
+                    return cellReference;
+                }
+                catch (ArgumentException ex)
+                {
+                    throw new FormulaFormatException(
+                        $"{_current.Span}: invalid cell reference `{_current.Spelling}'; {ex.Message}");
+                }
 
             case SyntaxTokenKind.LParenthesis:
                 Advance();
@@ -245,68 +255,6 @@ public class Parser : IDisposable
             default:
                 throw new FormulaFormatException(
                     $"{_current.Span}: unexpected token `{_current.Spelling}' (of type {_current.Kind}), expected a number, variable, or '('.");
-        }
-    }
-
-    /// <summary>
-    ///     <para>
-    ///         Parses a cell reference string (e.g., "A1", "B2", "AA10") into a <see cref="CellReferenceExpression"/>.
-    ///     </para>
-    /// </summary>
-    /// <param name="cellRepr">The string representation of the cell in question.</param>
-    /// <returns>A parsed version of the cell reference.</returns>
-    private static CellReferenceExpression ParseCellReference(SyntaxSpan span, string cellRepr)
-    {
-        // How do we parse cell references? Well, they start with one or more letters (A-Z, case-insensitive)
-        // indicating the column, followed by one or more digits (0-9) indicating the row.
-        //
-        // For example, "A1" is column 0, row 0; "B2" is column 1, row 1; "AA10" is column 26, row 9.
-        // We need to convert the letters to a zero-based column index and the digits to a zero-based row index.
-        // 
-        // For the column, we treat the letters as a base-26 number, where A=1, B=2, ..., Z=26, and we accumulate
-        // the value accordingly. We normalize to capital letters, subtract from 'A' to get the zero-based index
-        // of any letters, and then multiply the accumulated value by 26 for each new letter we encounter.
-        //
-        // While doing this, we keep track of our position in the string so that when we reach the digits, we can
-        // say "okay, everything from here on to the end is the row number." This is then just parsed as an integer
-        // without any special sauce.
-
-        // Get the column part.
-        var columnStated = 0;
-        var columnCursor = 0;
-
-        try
-        {
-            for (; char.IsLetter(cellRepr[columnCursor]); columnCursor++)
-            {
-                columnStated = checked(columnStated * 26 + (char.ToUpperInvariant(cellRepr[columnCursor]) - 'A' + 1));
-            }
-
-            // Subtract 1 to get zero-based index.
-            var columnIndex = checked(columnStated - 1);
-
-            // Get row part (from where we left off to the end).
-            if (!int.TryParse(cellRepr[columnCursor..], out var rowIndex))
-            {
-                throw new FormulaFormatException(
-                    $"{span}: invalid cell reference `{cellRepr}'; too many digits.");
-            }
-
-            // Subtract 1 to get zero-based index.
-            rowIndex = checked(rowIndex - 1);
-
-            return new CellReferenceExpression(span, columnIndex, rowIndex);
-        }
-        
-        //catch (IndexOutOfRangeException)
-        //{
-        //    throw new FormulaFormatException(
-        //        $"{span}: invalid cell reference `{cellRepr}'; expected letters followed by digits.");
-        //}
-        catch (OverflowException)
-        {
-            throw new FormulaFormatException(
-                $"{span}: cell reference `{cellRepr}' is too large to be represented.");
         }
     }
 }

@@ -47,8 +47,8 @@ public class ExpressionHasher : IExpressionVisitor
     /// <inheritdoc />
     public void Visit(CellReferenceExpression cellRef)
     {
-        _hash.Add(cellRef.ColumnIndex);
-        _hash.Add(cellRef.RowIndex);
+        _hash.Add(cellRef.location.ColumnIndex);
+        _hash.Add(cellRef.location.RowIndex);
     }
 
     /// <inheritdoc />

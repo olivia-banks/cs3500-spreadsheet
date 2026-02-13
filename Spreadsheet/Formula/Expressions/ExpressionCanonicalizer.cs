@@ -1,6 +1,6 @@
 using System.Globalization;
 using System.Text;
-using Formula.Util;
+using Formula.Cell;
 
 namespace Formula.Expressions;
 
@@ -71,7 +71,7 @@ public class ExpressionCanonicalizer : IExpressionVisitor
     /// <inheritdoc />
     public void Visit(CellReferenceExpression cellRef)
     {
-        _canonicalFormBuilder.Append(CellReferenceCanonicalizer.Canonicalize(cellRef.ColumnIndex, cellRef.RowIndex));
+        _canonicalFormBuilder.Append(cellRef.location.ToCanonicalString());
     }
 
     /// <inheritdoc />

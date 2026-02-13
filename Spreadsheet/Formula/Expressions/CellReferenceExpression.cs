@@ -1,3 +1,4 @@
+using Formula.Cell;
 using Formula.Frontend;
 
 namespace Formula.Expressions;
@@ -10,7 +11,7 @@ namespace Formula.Expressions;
 /// <param name="Span">The span of the expression in the source code.</param>
 /// <param name="ColumnIndex">The 0-based index of the column.</param>
 /// <param name="RowIndex">The 0-based row of the column.</param>
-public record CellReferenceExpression(SyntaxSpan Span, int ColumnIndex, int RowIndex) : Expression(Span)
+public record CellReferenceExpression(SyntaxSpan Span, CellLocation location) : Expression(Span)
 {
     /// <inheritdoc/>
     public override void Accept(IExpressionVisitor visitor) => visitor.Visit(this);
@@ -20,7 +21,7 @@ public record CellReferenceExpression(SyntaxSpan Span, int ColumnIndex, int RowI
     ///         Gets the hash code for a cell reference, ignoring the span.
     ///     </para>
     /// </summary>
-    public override int GetHashCode() => HashCode.Combine(ColumnIndex, RowIndex);
+    public override int GetHashCode() => HashCode.Combine(location.ColumnIndex, location.RowIndex);
     
     /// <inheritdoc/>
     public virtual bool Equals(CellReferenceExpression? other)
@@ -35,6 +36,6 @@ public record CellReferenceExpression(SyntaxSpan Span, int ColumnIndex, int RowI
             return true;
         }
 
-        return ColumnIndex == other.ColumnIndex && RowIndex == other.RowIndex;
+        return location.ColumnIndex == other.location.ColumnIndex && location.RowIndex == other.location.RowIndex;
     }
 }
