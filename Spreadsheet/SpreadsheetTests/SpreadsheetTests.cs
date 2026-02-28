@@ -26,11 +26,11 @@ public class SpreadsheetTests
     ///     Tests setting and retrieving a double cell.
     /// </summary>
     [TestMethod]
-    public void SetCellContents_DoubleContent_CanBeRetrieved()
+    public void SetContentsOfCell_DoubleContent_CanBeRetrieved()
     {
         var sheet = new Spreadsheet();
 
-        var order = sheet.SetCellContents("A1", 5.0);
+        var order = sheet.SetContentsOfCell("A1", "5.0");
 
         Assert.HasCount(1, order);
         Assert.AreEqual("A1", order[0]);
@@ -43,11 +43,11 @@ public class SpreadsheetTests
     ///     Tests setting and retrieving a string cell.
     /// </summary>
     [TestMethod]
-    public void SetCellContents_StringContent_CanBeRetrieved()
+    public void SetContentsOfCell_StringContent_CanBeRetrieved()
     {
         var sheet = new Spreadsheet();
 
-        sheet.SetCellContents("B2", "hello");
+        sheet.SetContentsOfCell("B2", "hello");
 
         var contents = sheet.GetCellContents("b2"); // case-insensitive
         Assert.AreEqual("hello", contents);
@@ -57,12 +57,12 @@ public class SpreadsheetTests
     ///     Tests setting and retrieving a formula cell.
     /// </summary>
     [TestMethod]
-    public void SetCellContents_FormulaContent_CanBeRetrieved()
+    public void SetContentsOfCell_FormulaContent_CanBeRetrieved()
     {
         var sheet = new Spreadsheet();
         var formula = new Formula("A1+2");
 
-        sheet.SetCellContents("C3", formula);
+        sheet.SetContentsOfCell("C3", "=A1+2");
 
         var contents = sheet.GetCellContents("C3");
         Assert.AreEqual(formula, contents);
@@ -94,45 +94,45 @@ public class SpreadsheetTests
     ///     Tests dependency ordering for simple chain.
     /// </summary>
     [TestMethod]
-    public void SetCellContents_FormulaDependency_ReturnsCorrectOrder()
+    public void SetContentsOfCell_FormulaDependency_ReturnsCorrectOrder()
     {
         var sheet = new Spreadsheet();
 
-        sheet.SetCellContents("A1", 5.0);
-        sheet.SetCellContents("B1", new Formula("A1*2"));
-        sheet.SetCellContents("C1", new Formula("B1+A1"));
+        sheet.SetContentsOfCell("A1", "5.0");
+        sheet.SetContentsOfCell("B1", "=A1*2");
+        sheet.SetContentsOfCell("C1", "=B1+A1");
 
-        var order = sheet.SetCellContents("A1", 10.0);
+        var order = sheet.SetContentsOfCell("A1", "10.0");
 
-        Assert.IsTrue(order[0] == "A1");
-        Assert.IsTrue(order.Contains("B1"));
-        Assert.IsTrue(order.Contains("C1"));
-        Assert.IsTrue(order.IndexOf("B1") < order.IndexOf("C1"));
+        Assert.AreEqual("A1", order[0]);
+        Assert.Contains("B1", order);
+        Assert.Contains("C1", order);
+        Assert.IsLessThan(order.IndexOf("C1"), order.IndexOf("B1"));
     }
 
     /// <summary>
     ///     Tests circular dependency detection (direct).
     /// </summary>
     [TestMethod]
-    public void SetCellContents_DirectCircularDependency_ThrowsCircularException()
+    public void SetContentsOfCell_DirectCircularDependency_ThrowsCircularException()
     {
         var sheet = new Spreadsheet();
 
-        Assert.ThrowsExactly<CircularException>(() => sheet.SetCellContents("A1", new Formula("A1+1")));
+        Assert.ThrowsExactly<CircularException>(() => sheet.SetContentsOfCell("A1", "=A1+1"));
     }
 
     /// <summary>
     ///     Tests circular dependency detection (indirect).
     /// </summary>
     [TestMethod]
-    public void SetCellContents_IndirectCircularDependency_ThrowsCircularException()
+    public void SetContentsOfCell_IndirectCircularDependency_ThrowsCircularException()
     {
         var sheet = new Spreadsheet();
 
         Assert.ThrowsExactly<CircularException>(() =>
         {
-            sheet.SetCellContents("A1", new Formula("B1+1"));
-            sheet.SetCellContents("B1", new Formula("A1+1"));
+            sheet.SetContentsOfCell("A1", "=B1+1");
+            sheet.SetContentsOfCell("B1", "=A1+1");
         });
     }
 
@@ -144,7 +144,7 @@ public class SpreadsheetTests
     {
         var sheet = new Spreadsheet();
 
-        sheet.SetCellContents("a1", 3.0);
+        sheet.SetContentsOfCell("a1", "3.0");
 
         var names = sheet.GetNamesOfAllNonemptyCells();
         Assert.HasCount(1, names);
@@ -155,20 +155,20 @@ public class SpreadsheetTests
     ///     Tests that replacing a cell updates recalculation order.
     /// </summary>
     [TestMethod]
-    public void SetCellContents_ReplaceCell_UpdatesDependencies()
+    public void SetContentsOfCell_ReplaceCell_UpdatesDependencies()
     {
         var sheet = new Spreadsheet();
 
-        sheet.SetCellContents("A1", 1.0);
-        sheet.SetCellContents("B1", new Formula("A1+1"));
+        sheet.SetContentsOfCell("A1", "1.0");
+        sheet.SetContentsOfCell("B1", "=A1+1");
 
-        var order = sheet.SetCellContents("A1", 2.0);
+        var order = sheet.SetContentsOfCell("A1", "2.0");
 
         Assert.HasCount(2, order);
         Assert.AreEqual("A1", order[0]);
         Assert.AreEqual("B1", order[1]);
     }
-    
+
     /// <summary>
     ///     If B1 and C1 directly depend on A1, and D1 depends on B1,
     ///     then changing A1 should recalculate A1, B1, C1, and D1.
@@ -176,21 +176,21 @@ public class SpreadsheetTests
     ///     D1 must come after B1.
     /// </summary>
     [TestMethod]
-    public void SetCellContents_DirectDependents_AreReturnedCorrectly()
+    public void SetContentsOfCell_DirectDependents_AreReturnedCorrectly()
     {
         var sheet = new Spreadsheet();
 
         // A1 has no dependencies
-        sheet.SetCellContents("A1", 5.0);
+        sheet.SetContentsOfCell("A1", "5.0");
 
         // Direct dependents of A1
-        sheet.SetCellContents("B1", new Formula("A1 * 2"));
-        sheet.SetCellContents("C1", new Formula("A1 + 3"));
+        sheet.SetContentsOfCell("B1", "=A1 * 2");
+        sheet.SetContentsOfCell("C1", "=A1 + 3");
 
         // D1 depends on B1 (indirectly depends on A1)
-        sheet.SetCellContents("D1", new Formula("B1 + 1"));
+        sheet.SetContentsOfCell("D1", "=B1 + 1");
 
-        var order = sheet.SetCellContents("A1", 10.0);
+        var order = sheet.SetContentsOfCell("A1", "10.0");
 
         // Must include all affected cells
         Assert.HasCount(4, order);
@@ -207,26 +207,26 @@ public class SpreadsheetTests
         // D1 must come after B1 (dependency ordering)
         Assert.IsLessThan(order.IndexOf("D1"), order.IndexOf("B1"));
     }
-    
+
     /// <summary>
     ///     Tests that passing an invalid name to the double overload throws InvalidNameException.
     /// </summary>
     [TestMethod]
-    public void SetCellContents_Double_InvalidName_ThrowsInvalidNameException()
+    public void SetContentsOfCell_Double_InvalidName_ThrowsInvalidNameException()
     {
         var sheet = new Spreadsheet();
 
-        Assert.ThrowsExactly<InvalidNameException>(() => sheet.SetCellContents("1A", 5.0));
+        Assert.ThrowsExactly<InvalidNameException>(() => sheet.SetContentsOfCell("1A", "5.0"));
     }
 
     /// <summary>
     ///     Tests that passing an invalid name to the string overload throws InvalidNameException.
     /// </summary>
     [TestMethod]
-    public void SetCellContents_String_InvalidName_ThrowsInvalidNameException()
+    public void SetContentsOfCell_String_InvalidName_ThrowsInvalidNameException()
     {
         var sheet = new Spreadsheet();
 
-        Assert.ThrowsExactly<InvalidNameException>(() => sheet.SetCellContents("$$$", "text"));
+        Assert.ThrowsExactly<InvalidNameException>(() => sheet.SetContentsOfCell("$$$", "text"));
     }
 }

@@ -1,26 +1,12 @@
-﻿namespace Spreadsheet;
+﻿using System.Globalization;
+using System.Text.Encodings.Web;
+
+namespace Spreadsheet;
 
 using Formula.Cell;
 using Formula;
 using DependencyGraph;
-
-/// <summary>
-///     <para>
-///       Thrown to indicate that a change to a cell will cause a circular dependency.
-///     </para>
-/// </summary>
-public class CircularException : Exception
-{
-}
-
-/// <summary>
-///     <para>
-///       Thrown to indicate that a name parameter was invalid.
-///     </para>
-/// </summary>
-public class InvalidNameException : Exception
-{
-}
+using System.Text.Json;
 
 /// <summary>
 ///     <para>
@@ -99,6 +85,93 @@ public class Spreadsheet
     /// </summary>
     private readonly DependencyGraph _dependencyGraph = new();
 
+
+    /// <summary>
+    ///     <para>
+    ///         Create an empty spreadsheet.  By definition, every cell in the spreadsheet has the empty string as its
+    ///         contents.
+    ///     </para>
+    /// </summary>
+    public Spreadsheet()
+    {
+    }
+
+    /// <summary>
+    ///     <para>
+    ///         Create a new spreadsheet from a JSON file (by path). The JSON file should be in the format produced by
+    ///         the Save method. If there are any problems loading the file, including if the file is not in the correct
+    ///         format, throw a SpreadsheetReadWriteException with an informative message.
+    ///     </para>
+    /// </summary>
+    /// <param name="filename">The path to the JSON file to load the spreadsheet from.</param>
+    /// <exception cref="SpreadsheetReadWriteException">Thrown if there are any problems loading the file, including if the file is not in the correct format.</exception>
+    public Spreadsheet(string filename)
+    {
+        try
+        {
+            // We can use System.Text.Json to read the JSON file and parse it into a JsonDocument. Then we can extract
+            // the cell data from the JSON and populate our spreadsheet using the existing SetContentsOfCell method,
+            // which will handle parsing the string form and updating the dependency graph.
+            using var stream = File.OpenRead(filename);
+            using var doc = JsonDocument.Parse(stream);
+
+            var root = doc.RootElement;
+
+            if (!root.TryGetProperty("Cells", out JsonElement cellsElement))
+            {
+                throw new SpreadsheetReadWriteException("Malformed JSON: Missing 'Cells' property.");
+            }
+
+            if (cellsElement.ValueKind != JsonValueKind.Object)
+            {
+                throw new SpreadsheetReadWriteException("Malformed JSON: 'Cells' must be an object.");
+            }
+
+            // Now we can iterate over the properties of the "Cells" object, where each property name is a cell name,
+            // and the value is an object containing the "StringForm" of the cell contents.
+            foreach (JsonProperty cellProperty in cellsElement.EnumerateObject())
+            {
+                var cellName = cellProperty.Name;
+                var cellValue = cellProperty.Value;
+
+                if (cellValue.ValueKind != JsonValueKind.Object)
+                {
+                    throw new SpreadsheetReadWriteException($"Malformed cell '{cellName}': Expected object.");
+                }
+
+                if (!cellValue.TryGetProperty("StringForm", out JsonElement stringFormElement))
+                {
+                    throw new SpreadsheetReadWriteException(
+                        $"Malformed cell '{cellName}': Missing 'StringForm' property.");
+                }
+
+                if (stringFormElement.ValueKind != JsonValueKind.String)
+                {
+                    throw new SpreadsheetReadWriteException(
+                        $"Malformed cell '{cellName}': 'StringForm' must be a string.");
+                }
+
+                var stringForm = stringFormElement.GetString();
+                if (stringForm == null)
+                {
+                    throw new SpreadsheetReadWriteException(
+                        $"Malformed cell '{cellName}': 'StringForm' cannot be null.");
+                }
+
+                // Now we can set the contents of the cell using the existing SetContentsOfCell method, which will
+                // handle parsing the string form and updating the dependency graph.
+                SetContentsOfCell(cellName, stringForm);
+            }
+        }
+        catch (Exception ex)
+        {
+            throw new SpreadsheetReadWriteException($"Error loading spreadsheet: {ex.Message}");
+        }
+        
+        // Finally, we can mark the spreadsheet as not changed, since we just loaded it.
+        Changed = false;
+    }
+
     /// <summary>
     ///     <para>
     ///         This method converts a cell name string into a CellLocation object. It is used internally to parse cell
@@ -108,7 +181,7 @@ public class Spreadsheet
     /// </summary>
     /// <param name="name">The cell name string to parse.</param>
     /// <returns>The CellLocation corresponding to the given name.</returns>
-    private CellLocation locationOfReference(string name)
+    private static CellLocation LocationOfReference(string name)
     {
         try
         {
@@ -155,7 +228,7 @@ public class Spreadsheet
     ///     </para>
     /// </returns>
     public object GetCellContents(string name)
-        => GetCellContents(locationOfReference(name));
+        => GetCellContents(LocationOfReference(name));
 
     /// <summary>
     ///     <para>
@@ -201,7 +274,7 @@ public class Spreadsheet
     /// <param name="cell">The cell to replace the current cell with.</param>
     /// <returns></returns>
     /// <exception cref="InvalidNameException"></exception>
-    public IList<CellLocation> SetCellContents(CellLocation location, Cell cell)
+    private IList<CellLocation> SetCellContents(CellLocation location, Cell cell)
     {
         var name = location.ToCanonicalString();
 
@@ -244,8 +317,8 @@ public class Spreadsheet
     ///         evaluated, followed by B1, followed by C1.
     ///     </para>
     /// </returns>
-    public IList<string> SetCellContents(string name, double number)
-        => SetCellContents(locationOfReference(name), new Cell(number))
+    private IList<string> SetCellContents(string name, double number)
+        => SetCellContents(LocationOfReference(name), new Cell(number))
             .Select(c => CellLocation.Canonicalize(c.ColumnIndex, c.RowIndex)).ToList();
 
     /// <summary>
@@ -257,8 +330,8 @@ public class Spreadsheet
     /// <param name="name">The name of the cell.</param>
     /// <param name="text">The new contents of the cell.</param>
     /// <returns>The same list as defined in <see cref="SetCellContents(string, double)"/>.</returns>
-    public IList<string> SetCellContents(string name, string text)
-        => SetCellContents(locationOfReference(name), new Cell(text))
+    private IList<string> SetCellContents(string name, string text)
+        => SetCellContents(LocationOfReference(name), new Cell(text))
             .Select(c => CellLocation.Canonicalize(c.ColumnIndex, c.RowIndex)).ToList();
 
     /// <summary>
@@ -277,8 +350,8 @@ public class Spreadsheet
     /// <param name="name"> The name of the cell. </param>
     /// <param name="formula"> The new contents of the cell. </param>
     /// <returns>The same list as defined in <see cref="SetCellContents(string, double)"/>.</returns>
-    public IList<string> SetCellContents(string name, Formula formula)
-        => SetCellContents(locationOfReference(name), new Cell(formula))
+    private IList<string> SetCellContents(string name, Formula formula)
+        => SetCellContents(LocationOfReference(name), new Cell(formula))
             .Select(c => CellLocation.Canonicalize(c.ColumnIndex, c.RowIndex)).ToList();
 
     /// <summary>
@@ -401,5 +474,257 @@ public class Spreadsheet
         }
 
         changed.AddFirst(name);
+    }
+
+    /// <summary>
+    ///   <para>
+    ///     Return the value of the named cell, as defined by
+    ///     <see cref="GetCellValue(string)"/>.
+    ///   </para>
+    /// </summary>
+    /// <param name="name"> The cell in question. </param>
+    /// <returns>
+    ///   <see cref="GetCellValue(string)"/>
+    /// </returns>
+    /// <exception cref="InvalidNameException">
+    ///   If the provided name is invalid, throws an InvalidNameException.
+    /// </exception>
+    public object this[string name] => GetCellValue(name);
+
+
+    /// <summary>
+    /// True if this spreadsheet has been changed since it was
+    /// created or saved (whichever happened most recently),
+    /// False otherwise.
+    /// </summary>
+    public bool Changed { get; private set; }
+
+
+    /// <summary>
+    /// Saves this spreadsheet to a file
+    /// </summary>
+    /// <example>
+    ///     <para>
+    ///         For example, consider a spreadsheet that contains a cell "A1" with contents being the double 5.0, and a
+    ///         cell "B3" with contents being the Formula("A1+2"), and a cell "C4" with the contents "hello". The output
+    ///         JSON should look like the following:
+    ///     </para>
+    ///     <code>
+    ///         {
+    ///             "Cells": {
+    ///                 "A1": {
+    ///                     "StringForm": "5"
+    ///                 },
+    ///                 "B3": {
+    ///                     "StringForm": "=A1+2"
+    ///                 },
+    ///                 "C4": {
+    ///                     "StringForm": "hello"
+    ///                 }
+    ///             }
+    ///         }
+    ///     </code>
+    /// </example>
+    /// <param name="filename"> The name (with path) of the file to save to.</param>
+    /// <exception cref="SpreadsheetReadWriteException">
+    ///   If there are any problems opening, writing, or closing the file,
+    ///   the method should throw a SpreadsheetReadWriteException with an
+    ///   explanatory message.
+    /// </exception>
+    public void Save(string filename)
+    {
+        // We just need to serialize the non-empty cells, since by definition any cell not in the dictionary is empty.
+        // We can serialize the cells as a dictionary from cell name to cell contents, where the cell contents is
+        // represented as a string (either the number as a string, the text, or the formula with an '=' prepended).
+        var data = _cells.ToDictionary(
+            kvp => kvp.Key.ToCanonicalString(),
+            kvp =>
+            {
+                var cell = kvp.Value;
+                return cell.Kind switch
+                {
+                    CellKind.Text => cell.AsText(),
+                    CellKind.Number => cell.AsNumber().ToString(CultureInfo.InvariantCulture),
+                    CellKind.Formula => "=" + cell.AsFormula().ToString(),
+                    _ => throw new InvalidOperationException("Invalid cell kind.")
+                };
+            });
+
+        // We can wrap the data in an outer object to match the format specified in the example.
+        var wrapper = new { Cells = data };
+
+        // Now we can serialize the wrapper object to JSON and write it to the file.
+        try
+        {
+            var opt = new JsonSerializerOptions
+                { WriteIndented = true, Encoder = JavaScriptEncoder.UnsafeRelaxedJsonEscaping };
+            var json = JsonSerializer.Serialize(wrapper, opt);
+            File.WriteAllText(filename, json);
+        }
+        catch (Exception e) when (e is IOException || e is JsonException)
+        {
+            throw new SpreadsheetReadWriteException($"Error saving spreadsheet: {e.Message}");
+        }
+
+        // Finally, we can mark the spreadsheet as not changed, since we just saved it.
+        Changed = false;
+    }
+
+    /// <summary>
+    ///   <para>
+    ///     Return the value of the named cell.
+    ///   </para>
+    /// </summary>
+    /// <param name="name"> The cell in question. </param>
+    /// <returns>
+    ///   Returns the value (as opposed to the contents) of the named cell.  The return
+    ///   value should be either a string, a double, or a CS3500.Formula.FormulaError.
+    /// </returns>
+    /// <exception cref="InvalidNameException">
+    ///   If the provided name is invalid, throws an InvalidNameException.
+    /// </exception>
+    public object GetCellValue(string name)
+    {
+        var location = LocationOfReference(name);
+        var cell = _cells.GetValueOrDefault(location, new Cell(string.Empty));
+
+        try
+        {
+            return cell.Kind switch
+            {
+                CellKind.Text => cell.AsText(),
+                CellKind.Number => cell.AsNumber(),
+                CellKind.Formula => cell.AsFormula().Evaluate((varName) =>
+                {
+                    var value = GetCellValue(varName);
+                    return value is not double d
+                        ? throw new FormulaFormatException($"Variable {varName} does not evaluate to a number.")
+                        : d;
+                }),
+                _ => throw new InvalidOperationException("Invalid cell kind.")
+            };
+        }
+        catch (FormulaFormatException e)
+        {
+            return new FormulaError(e.Message);
+        }
+    }
+
+    /// <summary>
+    ///   <para>
+    ///     Set the contents of the named cell to be the provided string
+    ///     which will either represent (1) a string, (2) a number, or
+    ///     (3) a formula (based on the prepended '=' character).
+    ///   </para>
+    ///   <para>
+    ///     Rules of parsing the input string:
+    ///   </para>
+    ///   <list type="bullet">
+    ///     <item>
+    ///       <para>
+    ///         If 'content' parses as a double, the contents of the named
+    ///         cell becomes that double.
+    ///       </para>
+    ///     </item>
+    ///     <item>
+    ///         If the string does not begin with an '=', the contents of the
+    ///         named cell becomes 'content'.
+    ///     </item>
+    ///     <item>
+    ///       <para>
+    ///         If 'content' begins with the character '=', an attempt is made
+    ///         to parse the remainder of content into a Formula f using the Formula
+    ///         constructor.  There are then three possibilities:
+    ///       </para>
+    ///       <list type="number">
+    ///         <item>
+    ///           If the remainder of content cannot be parsed into a Formula, a
+    ///           CS3500.Formula.FormulaFormatException is thrown.
+    ///         </item>
+    ///         <item>
+    ///           Otherwise, if changing the contents of the named cell to be f
+    ///           would cause a circular dependency, a CircularException is thrown,
+    ///           and no change is made to the spreadsheet.
+    ///         </item>
+    ///         <item>
+    ///           Otherwise, the contents of the named cell becomes f.
+    ///         </item>
+    ///       </list>
+    ///     </item>
+    ///   </list>
+    /// </summary>
+    /// <returns>
+    ///   <para>
+    ///     The method returns a list consisting of the name plus the names
+    ///     of all other cells whose value depends, directly or indirectly,
+    ///     on the named cell. The order of the list should be any order
+    ///     such that if cells are re-evaluated in that order, their dependencies
+    ///     are satisfied by the time they are evaluated.
+    ///   </para>
+    ///   <example>
+    ///     For example, if name is A1, B1 contains A1*2, and C1 contains B1+A1, the
+    ///     list {A1, B1, C1} is returned.
+    ///   </example>
+    /// </returns>
+    /// <exception cref="InvalidNameException">
+    ///     If name is invalid, throws an InvalidNameException.
+    /// </exception>
+    /// <exception cref="CircularException">
+    ///     If a formula resulted in a circular dependency, throws CircularException.
+    /// </exception>
+    public IList<string> SetContentsOfCell(string name, string content)
+    {
+        var location = LocationOfReference(name);
+        var cell = content switch
+        {
+            _ when double.TryParse(content, out var number) => new Cell(number),
+            _ when content.StartsWith('=') => new Cell(new Formula(content.Substring(1))),
+            _ => new Cell(content)
+        };
+
+        SetCellContents(location, cell);
+        Changed = true;
+
+        return GetCellsToRecalculate(location)
+            .Select(c => CellLocation.Canonicalize(c.ColumnIndex, c.RowIndex))
+            .ToList();
+    }
+}
+
+/// <summary>
+///     <para>
+///       Thrown to indicate that a change to a cell will cause a circular dependency.
+///     </para>
+/// </summary>
+public class CircularException : Exception
+{
+}
+
+/// <summary>
+///     <para>
+///       Thrown to indicate that a name parameter was invalid.
+///     </para>
+/// </summary>
+public class InvalidNameException : Exception
+{
+}
+
+/// <summary>
+///     <para>
+///         Thrown to indicate that a read or write attempt has failed with
+///         an expected error message informing the user of what went wrong.
+///     </para>
+/// </summary>
+public class SpreadsheetReadWriteException : Exception
+{
+    /// <summary>
+    ///   <para>
+    ///     Creates the exception with a message defining what went wrong.
+    ///   </para>
+    /// </summary>
+    /// <param name="msg"> An informative message to the user. </param>
+    public SpreadsheetReadWriteException(string msg)
+        : base(msg)
+    {
     }
 }
