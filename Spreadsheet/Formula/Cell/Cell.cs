@@ -31,7 +31,7 @@ public readonly struct Cell
     ///     </para>
     /// </summary>
     private readonly Formula? _formula;
-
+    
     /// <summary>
     ///     <para>
     ///         The kind of cell. This is used to determine the inner typing of the cell's value, in the absense of
