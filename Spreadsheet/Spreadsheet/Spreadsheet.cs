@@ -152,22 +152,17 @@ public class Spreadsheet
                 }
 
                 var stringForm = stringFormElement.GetString();
-                if (stringForm == null)
-                {
-                    throw new SpreadsheetReadWriteException(
-                        $"Malformed cell '{cellName}': 'StringForm' cannot be null.");
-                }
 
                 // Now we can set the contents of the cell using the existing SetContentsOfCell method, which will
                 // handle parsing the string form and updating the dependency graph.
-                SetContentsOfCell(cellName, stringForm);
+                SetContentsOfCell(cellName, stringForm!);
             }
         }
         catch (Exception ex)
         {
             throw new SpreadsheetReadWriteException($"Error loading spreadsheet: {ex.Message}");
         }
-        
+
         // Finally, we can mark the spreadsheet as not changed, since we just loaded it.
         Changed = false;
     }
@@ -291,68 +286,6 @@ public class Spreadsheet
         _cells[location] = cell;
         return GetCellsToRecalculate(location).ToList();
     }
-
-    /// <summary>
-    ///     <para>
-    ///         Set the contents of the named cell to the given number.
-    ///     </para>
-    /// </summary>
-    /// <exception cref="InvalidNameException">Thrown if the name is invalid>.</exception>
-    /// <param name="name"> The name of the cell. </param>
-    /// <param name="number"> The new contents of the cell. </param>
-    /// <returns>
-    ///     <para>
-    ///         This method returns an ordered list consisting of the passed in name
-    ///         followed by the names of all other cells whose value depends, directly
-    ///         or indirectly, on the named cell.
-    ///     </para>
-    ///     <para>
-    ///         The order must correspond to a valid dependency ordering for recomputing
-    ///         all of the cells, i.e., if you re-evaluate each cells in the order of the list,
-    ///         the overall spreadsheet will be correctly updated.
-    ///     </para>
-    ///     <para>
-    ///         For example, if name is A1, B1 contains A1*2, and C1 contains B1+A1, the
-    ///         list [A1, B1, C1] is returned, i.e., A1 was changed, so then A1 must be
-    ///         evaluated, followed by B1, followed by C1.
-    ///     </para>
-    /// </returns>
-    private IList<string> SetCellContents(string name, double number)
-        => SetCellContents(LocationOfReference(name), new Cell(number))
-            .Select(c => CellLocation.Canonicalize(c.ColumnIndex, c.RowIndex)).ToList();
-
-    /// <summary>
-    ///     <para>
-    ///         The contents of the named cell becomes the given text.
-    ///     </para>
-    /// </summary>
-    /// <exception cref="InvalidNameException">Thrown if the name is invalid.</exception>
-    /// <param name="name">The name of the cell.</param>
-    /// <param name="text">The new contents of the cell.</param>
-    /// <returns>The same list as defined in <see cref="SetCellContents(string, double)"/>.</returns>
-    private IList<string> SetCellContents(string name, string text)
-        => SetCellContents(LocationOfReference(name), new Cell(text))
-            .Select(c => CellLocation.Canonicalize(c.ColumnIndex, c.RowIndex)).ToList();
-
-    /// <summary>
-    ///     <para>
-    ///         Set the contents of the named cell to the given formula.
-    ///     </para>
-    /// </summary>
-    /// <exception cref="InvalidNameException">If the name is invalid, throw an InvalidNameException</exception>
-    /// <exception cref="CircularException">
-    ///     <para>
-    ///         If changing the contents of the named cell to be the formula would
-    ///         cause a circular dependency, throw a CircularException, and no
-    ///         change is made to the spreadsheet.
-    ///     </para>
-    /// </exception>
-    /// <param name="name"> The name of the cell. </param>
-    /// <param name="formula"> The new contents of the cell. </param>
-    /// <returns>The same list as defined in <see cref="SetCellContents(string, double)"/>.</returns>
-    private IList<string> SetCellContents(string name, Formula formula)
-        => SetCellContents(LocationOfReference(name), new Cell(formula))
-            .Select(c => CellLocation.Canonicalize(c.ColumnIndex, c.RowIndex)).ToList();
 
     /// <summary>
     ///   <para>
@@ -541,13 +474,14 @@ public class Spreadsheet
             kvp =>
             {
                 var cell = kvp.Value;
-                return cell.Kind switch
+                var inner = cell.Kind switch
                 {
                     CellKind.Text => cell.AsText(),
                     CellKind.Number => cell.AsNumber().ToString(CultureInfo.InvariantCulture),
                     CellKind.Formula => "=" + cell.AsFormula().ToString(),
-                    _ => throw new InvalidOperationException("Invalid cell kind.")
                 };
+
+                return new { StringForm = inner };
             });
 
         // We can wrap the data in an outer object to match the format specified in the example.
@@ -588,26 +522,18 @@ public class Spreadsheet
         var location = LocationOfReference(name);
         var cell = _cells.GetValueOrDefault(location, new Cell(string.Empty));
 
-        try
+        return cell.Kind switch
         {
-            return cell.Kind switch
+            CellKind.Text => cell.AsText(),
+            CellKind.Number => cell.AsNumber(),
+            CellKind.Formula => cell.AsFormula().Evaluate((varName) =>
             {
-                CellKind.Text => cell.AsText(),
-                CellKind.Number => cell.AsNumber(),
-                CellKind.Formula => cell.AsFormula().Evaluate((varName) =>
-                {
-                    var value = GetCellValue(varName);
-                    return value is not double d
-                        ? throw new FormulaFormatException($"Variable {varName} does not evaluate to a number.")
-                        : d;
-                }),
-                _ => throw new InvalidOperationException("Invalid cell kind.")
-            };
-        }
-        catch (FormulaFormatException e)
-        {
-            return new FormulaError(e.Message);
-        }
+                var value = GetCellValue(varName);
+                return value is not double d
+                    ? throw new FormulaFormatException($"Variable {varName} does not evaluate to a number.")
+                    : d;
+            }),
+        };
     }
 
     /// <summary>
@@ -715,16 +641,6 @@ public class InvalidNameException : Exception
 ///         an expected error message informing the user of what went wrong.
 ///     </para>
 /// </summary>
-public class SpreadsheetReadWriteException : Exception
+public class SpreadsheetReadWriteException(string msg) : Exception(msg)
 {
-    /// <summary>
-    ///   <para>
-    ///     Creates the exception with a message defining what went wrong.
-    ///   </para>
-    /// </summary>
-    /// <param name="msg"> An informative message to the user. </param>
-    public SpreadsheetReadWriteException(string msg)
-        : base(msg)
-    {
-    }
 }
