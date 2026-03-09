@@ -1,0 +1,180 @@
+﻿@namespace GUI.Components.Pages
+@page "/sheets"
+@using System.Diagnostics
+@using Microsoft.Extensions.AI
+@using Microsoft.JSInterop
+@rendermode InteractiveServer
+@inherits LayoutComponentBase
+@inject IJSRuntime JSRuntime
+
+<PageTitle>Spreadsheet</PageTitle>
+
+<div>
+    <span>
+        <button class="btn btn-primary" @onclick="SaveFile">Save</button>
+        <label>Load</label><InputFile type="file" OnChange="HandleFileChooser"/>
+    </span>
+    
+    <div class="table-container">
+        <div class="scrollable">
+            <table class="table table-bordered">
+                <thead>
+                <tr class="fixed-header">
+                    <th scope="col">&nbsp;</th>
+                    @for (int col = 0; col < COLS; col++)
+                    {
+                        <th scope="col">@Alphabet[col]</th>
+                    }
+                </tr>
+                </thead>
+
+                <tbody>
+                @for (int row = 0; row < ROWS; row++)
+                {
+                    <tr style="padding:0 !important;">
+                        <th style="padding:0; z-index: 6; !important;" scope="row" class="fixed-column">@(row + 1)</th>
+                        @for (int col = 0; col < COLS; col++)
+                        {
+                            int r = row;
+                            int c = col;
+
+                            <td @onclick="() => CellClicked(r, c)" style="padding:0px !important;">
+                                <p class="spreadcell"> @CellsBackingStore[r, c] </p>
+                            </td>
+                        }
+                    </tr>
+                }
+                </tbody>
+            </table>
+        </div>
+    </div>
+    <div class="ai-sidebar"
+         style="position: fixed; right: 0; top: 3.5rem; height: calc(100vh - 3.5rem); background: #f0f0f0; border-left: 1px solid #ccc; display: flex; flex-direction: column; transition: 0.3s;
+             width: @(_isCollapsed ? "0" : "300px");
+         visibility: @(_isCollapsed ? "hidden" : "visible");
+         padding: @(_isCollapsed ? "0" : "10px");">
+        <h3>AI Assistant</h3>
+
+        <div class="chat-history" style="flex-grow: 1; overflow-y: auto; display: flex; flex-direction: column; gap: 10px;">
+
+            @foreach (var msg in AIService.ChatHistory)
+            {
+                if (msg.Role == ChatRole.System || msg.Role == ChatRole.Tool) continue;
+
+                <div style="background: @(msg.Role == Microsoft.Extensions.AI.ChatRole.User ? "#007bff" : "#e0e0e0");
+                        color: @(msg.Role == Microsoft.Extensions.AI.ChatRole.User ? "white" : "black");
+                        padding: 8px; border-radius: 5px; align-self: @(msg.Role == Microsoft.Extensions.AI.ChatRole.User ? "flex-end" : "flex-start"); max-width: 90%;">
+                    <strong>@(msg.Role == Microsoft.Extensions.AI.ChatRole.User ? "You" : "AI"):</strong> @msg.Text
+                </div>
+            }
+        </div>
+
+        <div class="chat-input" style="margin-top: 10px;">
+            <input @bind="UserInput"
+                   @onkeyup="@(async (e) =>
+                             {
+                                 if (e.Key == "Enter") await SubmitChat();
+                             })"
+                   disabled="@AIService.IsProcessing"
+                   placeholder="Ask AI to edit your spreadsheet cells..."
+                   style="width: 100%; padding: 5px;"/>
+
+            <button @onclick="SubmitChat" disabled="@AIService.IsProcessing" style="margin-top: 5px; width: 100%; cursor: @(AIService.IsProcessing ? "not-allowed" : "pointer");">
+                @if (AIService.IsProcessing)
+                {
+                    <span><i class="spinner-border spinner-border-sm"></i> Thinking...</span>
+                }
+                else
+                {
+                    <span>Send</span>
+                }
+            </button>
+        </div>
+    </div>
+</div>
+
+
+<style>
+    .spreadcell {
+        width: 150px;
+        height: 40px;
+    }
+
+    .table-container {
+        overflow-x: auto;
+    }
+
+    .fixed-header {
+        position: sticky;
+        top: 0;
+        z-index: 5 !important;
+        background-color: #ffffff !important;
+    }
+
+    .fixed-column {
+        position: sticky;
+        left: 0;
+        z-index: 6 !important;
+        background-color: #ffffff !important;
+    }
+
+    .scrollable {
+        white-space: nowrap; /* Ensures no line breaks within cells */
+        width: 1000px;
+        height: 500px;
+        margin: -1px;
+    }
+
+    .ai-sidebar {
+        z-index: 9999; /* make sidebar always on top */
+    }
+</style>
+
+
+<script type="text/javascript">
+    function focusElement(id) {
+        console.log(`looking for: ${id}`);
+        var element = document.getElementById(id);
+        if (element) {
+            console.log(`focusing element: ${id} ${element}`)
+            element.focus();
+        }
+    }
+
+    window.addKeyPressListener = function (dotNetObject) {
+        console.log("registering key press event handler");
+        document.addEventListener('keydown', function (event) {
+            console.log(`got key: ${event.key}`);
+            if (['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(event.key)) {
+                event.preventDefault(); // Prevent arrow keys from scrolling
+            }
+            dotNetObject.invokeMethodAsync('HandleKeyPress', event.key);
+        });
+    };
+
+    function downloadFile(fileName, fileContent) {
+        console.log(`download file ${fileName}`);
+        // Create a blob with the file content
+        const blob = new Blob([fileContent], {type: "text/plain"});
+
+        // Create a link element
+        const a = document.createElement("a");
+        a.href = URL.createObjectURL(blob);
+        a.download = fileName;
+
+        // Append the anchor element to the body
+        document.body.appendChild(a);
+
+        // Click the link to trigger download
+        a.click();
+
+        // Remove the anchor element from the DOM
+        document.body.removeChild(a);
+    }
+
+</script>
+
+<button @onclick="() => _isCollapsed = !_isCollapsed"
+        style="position: fixed; right: 10px; top: 10px; z-index: 1000;">
+    @(_isCollapsed ? "Turn Chat ON" : "Turn Chat OFF")
+</button>
