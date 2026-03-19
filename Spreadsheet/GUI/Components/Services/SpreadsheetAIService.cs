@@ -68,7 +68,8 @@ public class SpreadsheetAIService
             {
                 Tools = [
                     AIFunctionFactory.Create(tools.SetCellContent),
-                   // TODO: You can add more tools to be included from SpreadsheetTools.cs
+                    AIFunctionFactory.Create(tools.GetCellContentInfo),
+                    AIFunctionFactory.Create(tools.GetActiveCells)
                 ]
             };
 

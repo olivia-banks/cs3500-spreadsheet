@@ -3,6 +3,8 @@
 // </copyright>
 // Written by Professor Ahmad Alsaleem and Hung Phan Quoc Viet for CS 3500, Spring 2026 
 
+using System.Text;
+
 namespace GUI.Components.Tools;
 
 using System;
@@ -33,15 +35,31 @@ public class SpreadsheetTools(Spreadsheet sheet)
     }
     
     /// <summary>
-    /// TODO: Implement another method that performs a task the AI model can interact with
-    /// TODO: Update the method signature and this comment as appropriate.
+    /// Gets a cells contents for the user, so that if a cell has a formula
+    /// the user can see the formula and how it equated to the displayed value
     /// </summary>
     /// <param name="cellName"></param>
     /// <returns></returns>
-    /// <exception cref="NotImplementedException"></exception>
-    [Description("to be completed")]
-    public string AnotherMethods(string cellName)
+    [Description("Gets the contents of a spreadsheet cell and displays it the user.")]
+    public string GetCellContentInfo(string cellName)
     {
-        throw new NotImplementedException();
+        return "Success, the contents of the cell are: " + sheet.GetCellContents(cellName);
+    }
+    
+    /// <summary>
+    /// Gets all the names of non-empty cells for the user, so they can keep track
+    /// of what they have put into the spreadsheet
+    /// </summary>
+    /// <param name="cellName"></param>
+    /// <returns></returns>
+    [Description("Gets the names of all non-empty spreadsheet cells and displays it the user.")]
+    public string GetActiveCells()
+    {
+        StringBuilder allActiveCells = new StringBuilder();
+        foreach (string cellName in sheet.GetNamesOfAllNonemptyCells())
+        {
+            allActiveCells.Append(cellName);
+        }
+        return "Success, these are all the filled cells: " + allActiveCells.ToString();
     }
 }
