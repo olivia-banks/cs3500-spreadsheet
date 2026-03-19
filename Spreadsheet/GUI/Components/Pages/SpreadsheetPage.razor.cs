@@ -11,6 +11,8 @@
 using System;
 using System.IO;
 using System.Threading.Tasks;
+using Formula.Cell;
+
 namespace GUI.Components.Pages;
 using Microsoft.AspNetCore.Components.Forms;
 using Microsoft.AspNetCore.Components.Web;
@@ -62,6 +64,12 @@ public partial class SpreadsheetPage
     private bool _isCollapsed;
 
     /// <summary>
+    /// This field is responsible for hiding/showing the input box for manually putting in values to the
+    /// spreadsheet.
+    /// </summary>
+    private bool _cellTextBoxVisability = true;
+
+    /// <summary>
     /// Gets or sets the AI service responsible for processing natural language
     /// queries and applying the resulting changes to the spreadsheet model.
     /// </summary>
@@ -80,6 +88,17 @@ public partial class SpreadsheetPage
     /// The user's input for the AI device
     /// </summary>
     private string UserInput { get; set; } = "";
+    
+    /// <summary>
+    /// The user's input from the manual cell input text box
+    /// </summary>
+    private string UserManualInput { get; set; } = "";
+    
+    /// <summary>
+    /// This represents the currently selected cell by the user
+    /// by default it is set to A1 unless changed
+    /// </summary>
+    private string _activeCell = "A1";
 
     /// <summary>
     /// Handler for when a cell is clicked
@@ -88,7 +107,13 @@ public partial class SpreadsheetPage
     /// <param name="col">The column component of the cell's coordinates</param>
     private void CellClicked( int row, int col )
     {
-
+        _cellTextBoxVisability = false;
+        int actualRow = row + 1;
+        _activeCell = "" + Alphabet[col] + actualRow;
+        if (spreadsheet.GetNamesOfAllNonemptyCells().Contains(_activeCell))
+        {
+            UserManualInput = spreadsheet.GetCellContents(_activeCell).ToString();
+        }
     }
     
     /// <summary>
@@ -150,6 +175,18 @@ public partial class SpreadsheetPage
         SyncUIWithSpreadsheet();
         UserInput = ""; // Reset the local text box
     }
+    
+    /// <summary>
+    /// Takes in a string from the user and then adds it as the contents to the
+    /// currently active cell in the spreadsheet
+    /// </summary>
+    private async Task SubmitCellInfo()
+    {
+        spreadsheet.SetContentsOfCell(_activeCell, UserManualInput);
+        SyncUIWithSpreadsheet();
+        _cellTextBoxVisability = true;
+        UserManualInput = ""; // Reset the local text box
+    }
 
     /// <summary>
     /// Synchronizes the entire UI grid by polling the latest calculated values from the spreadsheet and filling CellsBackingStore .
@@ -157,8 +194,10 @@ public partial class SpreadsheetPage
     /// </summary>
     private void SyncUIWithSpreadsheet()
     {
-        // TODO: fill the code the sync the cells with new spreadsheet content.
-        
+        foreach (CellLocation cellSpot in spreadsheet.GetLocationsOfAllNonemptyCells())
+        {
+            CellsBackingStore[cellSpot.RowIndex, cellSpot.ColumnIndex] = spreadsheet.GetCellValue(cellSpot.ToCanonicalString()) + "";
+        }
         // Now tell Blazor the data in the array has changed
         StateHasChanged();
     }
