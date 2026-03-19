@@ -11,6 +11,8 @@
 using System;
 using System.IO;
 using System.Threading.Tasks;
+using Formula.Cell;
+
 namespace GUI.Components.Pages;
 using Microsoft.AspNetCore.Components.Forms;
 using Microsoft.AspNetCore.Components.Web;
@@ -88,7 +90,7 @@ public partial class SpreadsheetPage
     /// <param name="col">The column component of the cell's coordinates</param>
     private void CellClicked( int row, int col )
     {
-
+        
     }
     
     /// <summary>
@@ -157,8 +159,10 @@ public partial class SpreadsheetPage
     /// </summary>
     private void SyncUIWithSpreadsheet()
     {
-        // TODO: fill the code the sync the cells with new spreadsheet content.
-        
+        foreach (CellLocation cellSpot in spreadsheet.GetLocationsOfAllNonemptyCells())
+        {
+            CellsBackingStore[cellSpot.RowIndex, cellSpot.ColumnIndex] = spreadsheet.GetCellValue(cellSpot.ToCanonicalString()) + "";
+        }
         // Now tell Blazor the data in the array has changed
         StateHasChanged();
     }
