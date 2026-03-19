@@ -92,17 +92,28 @@
         </div>
     </div>
     
-    <div class="cell-input-textbox" style="position: relative; bottom: 0; left: 0; width: 100%;  padding: 10px;
+    <div class="cell-input-textbox" style="position: relative; bottom: 0; left: 0; width: 100%;  padding: 10px; background: #f0f0f0; border-left: 1px solid #ccc; border-top: 1px solid #ccc; display: flex; flex-direction: row; transition: 0.3s;
          width: @(_cellTextBoxVisability ? "0" : "300px");
          visibility: @(_cellTextBoxVisability ? "hidden" : "visible");
          padding: @(_cellTextBoxVisability ? "0" : "10px");">
-        <h3>Cell Input</h3>
+        <h3 style="padding: 10px">Input Contents</h3>
         <input @bind="UserManualInput"
                @onkeyup="@(async (e) =>
                          {
                              if (e.Key == "Enter") await SubmitCellInfo();
                          })"/>
+        <div class="cell-name" style="position: relative; bottom: 0; left: 0; width: 50%;  padding: 10px">
+            <h6>Cell: @_activeCell</h6>
+            <h6>Value: @spreadsheet.GetCellValue(_activeCell)</h6>
+        </div>
     </div>
+    <div class="cell-input-submit-button" style="position: relative; bottom: 0; left: 0; width: 200%; height: 200%; width: @(_cellTextBoxVisability ? "0" : "300px");
+         visibility: @(_cellTextBoxVisability ? "hidden" : "visible");">
+        <button @onclick="SubmitCellInfo" style="width: 150%; height: 150%">
+            <span>Enter</span>
+        </button>
+    </div>
+    
     
 </div>
 
