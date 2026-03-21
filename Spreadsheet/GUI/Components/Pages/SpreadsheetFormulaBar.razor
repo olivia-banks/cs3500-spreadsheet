@@ -1,0 +1,21 @@
+@namespace GUI.Components.Pages
+
+<div id="formula-bar">
+    <div id="cell-addr">@SelectedCellRef</div>
+    <div id="fx-label">fx</div>
+    <input id="formula-input"
+           type="text"
+           value="@FormulaInput"
+           @oninput="OnFormulaChanged"
+           @onkeydown="OnFormulaKeyDown"
+           @onkeydown:stopPropagation="true"
+           placeholder="Enter a value or formula"
+           spellcheck="false" />
+</div>
+
+@code {
+    [Parameter] public string SelectedCellRef { get; set; } = string.Empty;
+    [Parameter] public string FormulaInput { get; set; } = string.Empty;
+    [Parameter] public EventCallback<ChangeEventArgs> OnFormulaChanged { get; set; }
+    [Parameter] public EventCallback<KeyboardEventArgs> OnFormulaKeyDown { get; set; }
+}

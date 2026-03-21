@@ -1,0 +1,23 @@
+@namespace GUI.Components.Pages
+
+<div id="statusbar">
+    <div class="sb-item"><span class="sb-label">Cell:</span><span>@SelectedCellRef</span></div>
+    <div class="sb-item"><span class="sb-label">Mode:</span><span>@(Editing ? "Edit" : "Ready")</span></div>
+    <div class="sb-item"><span class="sb-label">Size:</span><span>@Rows x @Cols</span></div>
+    <div id="sb-right">
+        <div class="sb-item sb-last">
+            <span class="sb-label">Value:</span><span>@SelectedCellDisplay</span>
+            <span class="sb-divider"></span>
+            <span class="sb-lastsaved">@LastSavedLabel</span>
+        </div>
+    </div>
+</div>
+
+@code {
+    [Parameter] public string SelectedCellRef { get; set; } = string.Empty;
+    [Parameter] public bool Editing { get; set; }
+    [Parameter] public int Rows { get; set; }
+    [Parameter] public int Cols { get; set; }
+    [Parameter] public string SelectedCellDisplay { get; set; } = string.Empty;
+    [Parameter] public string LastSavedLabel { get; set; } = string.Empty;
+}

@@ -1,0 +1,75 @@
+@namespace GUI.Components.Pages
+
+<div id="menubar">
+    <div class="m-item @(OpenMenuName == "File" ? "open" : string.Empty)" @onclick:stopPropagation="true" @onclick='() => ToggleMenu.InvokeAsync("File")'>
+        File
+        <div class="m-drop">
+            <div class="m-opt" @onclick="OnNewDocument">New <span class="kbd">Ctrl+N</span></div>
+            <div class="m-opt" @onclick="OnOpenLoad">Open... <span class="kbd">Ctrl+O</span></div>
+            <div class="m-sep"></div>
+            <div class="m-opt" @onclick="OnOpenSave">Save <span class="kbd">Ctrl+S</span></div>
+            <div class="m-opt" @onclick="OnOpenSave">Save As...</div>
+            <div class="m-sep"></div>
+            <div class="m-opt m-opt-disabled" title="This feature isn't implemented yet.">Export CSV</div>
+            <div class="m-opt m-opt-disabled" title="This feature isn't implemented yet.">Import CSV</div>
+            <div class="m-sep"></div>
+            <div class="m-opt" @onclick="OnOpenAbout">About BMOS</div>
+        </div>
+    </div>
+
+    <div class="m-item @(OpenMenuName == "Edit" ? "open" : string.Empty)" @onclick:stopPropagation="true" @onclick='() => ToggleMenu.InvokeAsync("Edit")'>
+        Edit
+        <div class="m-drop">
+            <div class="m-opt m-opt-disabled" title="This feature isn't implemented yet.">Undo <span class="kbd">Ctrl+Z</span></div>
+            <div class="m-opt m-opt-disabled" title="This feature isn't implemented yet.">Redo <span class="kbd">Ctrl+Y</span></div>
+            <div class="m-sep"></div>
+            <div class="m-opt m-opt-disabled" title="This feature isn't implemented yet.">Copy <span class="kbd">Ctrl+C</span></div>
+            <div class="m-opt m-opt-disabled" title="This feature isn't implemented yet.">Paste <span class="kbd">Ctrl+V</span></div>
+            <div class="m-opt" @onclick="OnClearSelectedCell">Clear Cell <span class="kbd">Del</span></div>
+            <div class="m-sep"></div>
+            <div class="m-opt m-opt-disabled" title="This feature isn't implemented yet.">Find... <span class="kbd">Ctrl+F</span></div>
+        </div>
+    </div>
+
+    <div class="m-item @(OpenMenuName == "Insert" ? "open" : string.Empty)" @onclick:stopPropagation="true" @onclick='() => ToggleMenu.InvokeAsync("Insert")'>
+        Insert
+        <div class="m-drop">
+            <div class="m-opt m-opt-disabled" title="This feature isn't implemented yet.">Row Above</div>
+            <div class="m-opt m-opt-disabled" title="This feature isn't implemented yet.">Column Left</div>
+        </div>
+    </div>
+
+    <div class="m-item @(OpenMenuName == "View" ? "open" : string.Empty)" @onclick:stopPropagation="true" @onclick='() => ToggleMenu.InvokeAsync("View")'>
+        View
+        <div class="m-drop">
+            <div class="m-opt" @onclick="OnToggleAI">AI Assistant Panel</div>
+            <div class="m-sep"></div>
+            <div class="m-opt" @onclick="OnZoomIn">Zoom In <span class="kbd">Ctrl++</span></div>
+            <div class="m-opt" @onclick="OnZoomOut">Zoom Out <span class="kbd">Ctrl+-</span></div>
+            <div class="m-opt" @onclick="OnResetZoom">Reset Zoom <span class="kbd">Ctrl+0</span></div>
+        </div>
+    </div>
+
+    <div class="m-item @(OpenMenuName == "Help" ? "open" : string.Empty)" @onclick:stopPropagation="true" @onclick='() => ToggleMenu.InvokeAsync("Help")'>
+        Help
+        <div class="m-drop">
+            <div class="m-opt" @onclick="OnOpenAbout">About BMOS</div>
+            <div class="m-opt" @onclick="OnOpenAIHelp">Ask AI Assistant</div>
+        </div>
+    </div>
+</div>
+
+@code {
+    [Parameter] public string? OpenMenuName { get; set; }
+    [Parameter] public EventCallback<string> ToggleMenu { get; set; }
+    [Parameter] public EventCallback OnNewDocument { get; set; }
+    [Parameter] public EventCallback OnOpenLoad { get; set; }
+    [Parameter] public EventCallback OnOpenSave { get; set; }
+    [Parameter] public EventCallback OnOpenAbout { get; set; }
+    [Parameter] public EventCallback OnClearSelectedCell { get; set; }
+    [Parameter] public EventCallback OnToggleAI { get; set; }
+    [Parameter] public EventCallback OnZoomIn { get; set; }
+    [Parameter] public EventCallback OnZoomOut { get; set; }
+    [Parameter] public EventCallback OnResetZoom { get; set; }
+    [Parameter] public EventCallback OnOpenAIHelp { get; set; }
+}

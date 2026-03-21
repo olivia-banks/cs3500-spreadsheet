@@ -1,0 +1,49 @@
+@namespace GUI.Components.Pages
+
+<div id="ai-panel" class="@(AIHidden ? "hidden" : string.Empty)" style="@AIPanelStyle">
+    <div class="ai-resize-handle @(AIHidden ? "hidden" : string.Empty)"
+         @onmousedown="OnStartResizeAI"
+         title="Drag to resize AI panel"></div>
+    <div id="ai-panel-hdr">
+        <span>AI Assistant</span>
+        <div class="ai-badge">BMOS AI</div>
+        <button class="ai-close" @onclick="OnToggleAI">×</button>
+    </div>
+    <div id="ai-msgs">
+        @ChildContent
+        @if (AITyping)
+        {
+            <div class="ai-bubble bot">
+                <span class="ai-label">BMOS AI</span>
+                <div class="ai-dots"><div class="ai-dot"></div><div class="ai-dot"></div><div class="ai-dot"></div></div>
+            </div>
+        }
+    </div>
+    <div id="ai-input-wrap">
+        <div id="ai-input-row">
+            <textarea id="ai-input"
+                      rows="1"
+                      value="@AIInput"
+                      @oninput="OnAIInputChanged"
+                      @onkeydown="OnAIKeyDown"
+                      @onkeydown:stopPropagation="true"
+                      placeholder="Ask about formulas or your data..."></textarea>
+            <button id="ai-send" @onclick="OnSendAI" disabled="@(!CanSendAI)">^</button>
+        </div>
+    </div>
+</div>
+
+@code {
+    [Parameter] public bool AIHidden { get; set; }
+    [Parameter] public string AIPanelStyle { get; set; } = string.Empty;
+    [Parameter] public bool AITyping { get; set; }
+    [Parameter] public string AIInput { get; set; } = string.Empty;
+    [Parameter] public bool CanSendAI { get; set; }
+
+    [Parameter] public EventCallback<MouseEventArgs> OnStartResizeAI { get; set; }
+    [Parameter] public EventCallback OnToggleAI { get; set; }
+    [Parameter] public EventCallback<ChangeEventArgs> OnAIInputChanged { get; set; }
+    [Parameter] public EventCallback<KeyboardEventArgs> OnAIKeyDown { get; set; }
+    [Parameter] public EventCallback OnSendAI { get; set; }
+    [Parameter] public RenderFragment? ChildContent { get; set; }
+}

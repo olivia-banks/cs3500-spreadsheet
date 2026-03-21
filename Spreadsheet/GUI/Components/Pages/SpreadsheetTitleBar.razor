@@ -1,0 +1,28 @@
+@namespace GUI.Components.Pages
+
+<div id="titlebar">
+    <div id="logo-text">BMOS</div>
+    <input id="doc-name"
+           type="text"
+           value="@DocumentName"
+           @oninput="OnDocumentNameChanged"
+           @onclick:stopPropagation="true"
+           spellcheck="false" />
+    <div id="titlebar-right">
+        <div id="saved-badge" class="@(IsSaved ? "saved" : "unsaved")">
+            <div class="badge-dot"></div>
+            <span>@(IsSaved ? "Saved" : "Unsaved")</span>
+        </div>
+        <div class="tb-divider"></div>
+        <button class="titlebar-btn primary" @onclick:stopPropagation="true" @onclick="OnToggleAI">AI Assistant</button>
+        <button class="titlebar-btn" @onclick:stopPropagation="true" @onclick="OnOpenAbout">About</button>
+    </div>
+</div>
+
+@code {
+    [Parameter] public string DocumentName { get; set; } = string.Empty;
+    [Parameter] public bool IsSaved { get; set; }
+    [Parameter] public EventCallback<ChangeEventArgs> OnDocumentNameChanged { get; set; }
+    [Parameter] public EventCallback OnToggleAI { get; set; }
+    [Parameter] public EventCallback OnOpenAbout { get; set; }
+}
