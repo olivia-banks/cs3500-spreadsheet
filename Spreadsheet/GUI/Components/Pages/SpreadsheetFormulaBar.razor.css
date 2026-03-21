@@ -1,0 +1,51 @@
+#formula-bar {
+    display: flex;
+    align-items: stretch;
+    height: 32px;
+    background: var(--surface);
+    border-bottom: 1px solid var(--border);
+    flex-shrink: 0;
+}
+
+#cell-addr {
+    width: var(--hdr-w);
+    min-width: var(--hdr-w);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-right: 1px solid var(--border-dark);
+    font-family: var(--mono);
+    font-size: 11px;
+    font-weight: 500;
+    color: var(--text);
+    background: var(--bg-header);
+    flex-shrink: 0;
+}
+
+#fx-label {
+    display: flex;
+    align-items: center;
+    padding: 0 10px;
+    border-right: 1px solid var(--border);
+    font-size: 13px;
+    color: var(--text-3);
+    background: var(--bg-header);
+    flex-shrink: 0;
+    font-style: italic;
+}
+
+#formula-input {
+    flex: 1;
+    border: none;
+    outline: none;
+    font-family: var(--mono);
+    font-size: 12px;
+    color: var(--text);
+    background: transparent;
+    padding: 0 12px;
+}
+
+#formula-input::placeholder {
+    color: var(--text-3);
+    font-size: 12px;
+}

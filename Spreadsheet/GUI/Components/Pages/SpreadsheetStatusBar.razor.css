@@ -1,0 +1,47 @@
+#statusbar {
+    display: flex;
+    align-items: center;
+    height: 22px;
+    padding: 0 12px;
+    background: var(--bg-chrome);
+    border-top: 1px solid var(--border);
+    font-size: 11px;
+    color: var(--text-2);
+    flex-shrink: 0;
+}
+
+.sb-item {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 0 12px 0 0;
+    margin-right: 12px;
+    border-right: 1px solid var(--border);
+    white-space: nowrap;
+}
+
+.sb-last {
+    border-right: none;
+    margin-right: 0;
+    gap: 10px;
+}
+
+.sb-label {
+    color: var(--text-3);
+}
+
+#sb-right {
+    margin-left: auto;
+}
+
+.sb-divider {
+    width: 1px;
+    height: 12px;
+    background: var(--border);
+    display: inline-block;
+    margin: 0 2px;
+}
+
+.sb-lastsaved {
+    color: var(--text-3);
+}

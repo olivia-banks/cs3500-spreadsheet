@@ -1,8 +1,43 @@
-@import url("spreadsheet.css");
+:root {
+    --bmos-font-sans: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    --bmos-bg: #ffffff;
+    --bmos-bg-chrome: #f8f9fa;
+    --bmos-bg-header: #f1f3f4;
+    --bmos-surface: #ffffff;
+    --bmos-border: #e0e0e0;
+    --bmos-border-dark: #c4c4c4;
+    --bmos-overlay: rgb(0 0 0 / 30%);
+    --bmos-shadow-md: 0 2px 8px rgb(0 0 0 / 12%);
+    --bmos-shadow-lg: 0 8px 32px rgb(0 0 0 / 18%);
+    --bmos-text: #202124;
+    --bmos-text-muted: #5f6368;
+    --bmos-text-subtle: #9aa0a6;
+    --bmos-text-strong: #000000;
+    --bmos-text-on-accent: #ffffff;
+    --bmos-accent: #1a73e8;
+    --bmos-accent-hover: #1557b0;
+    --bmos-accent-light: #e8f0fe;
+    --bmos-accent-border: #c5d8fd;
+    --bmos-selected-bg: #e8f0fe;
+    --bmos-selected-border: #1a73e8;
+    --bmos-success: #188038;
+    --bmos-success-light: #e6f4ea;
+    --bmos-success-border: #b7dfc4;
+    --bmos-warning: #e37400;
+    --bmos-warning-light: #fef3e2;
+    --bmos-warning-border: #f5c97a;
+    --bmos-grid-line: #e0e0e0;
+    --bmos-grid-hdr-hover: #e8eaed;
+    --bmos-find-match-bg: #fef9c3;
+    --bmos-toast-bg: #333333;
+    --bmos-toast-text: #ffffff;
+    --bmos-disabled-bg: #c9ced6;
+    --bmos-disabled-text: #eef1f5;
+}
 
 html,
 body {
-    font-family: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    font-family: var(--bmos-font-sans);
 }
 
 h1:focus {

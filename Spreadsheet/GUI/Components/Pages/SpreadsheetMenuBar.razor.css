@@ -1,0 +1,86 @@
+#menubar {
+    display: flex;
+    align-items: center;
+    height: 30px;
+    padding: 0 8px;
+    background: var(--bg);
+    border-bottom: 1px solid var(--border);
+    gap: 2px;
+    flex-shrink: 0;
+}
+
+.m-item {
+    position: relative;
+    display: flex;
+    align-items: center;
+    height: 24px;
+    padding: 0 10px;
+    border-radius: 4px;
+    font-size: 13px;
+    color: var(--text-2);
+    cursor: pointer;
+    user-select: none;
+    transition: background 0.1s, color 0.1s;
+    white-space: nowrap;
+}
+
+.m-item:hover,
+.m-item.open {
+    background: var(--bg-header);
+    color: var(--text);
+}
+
+.m-drop {
+    display: none;
+    position: absolute;
+    top: calc(100% + 2px);
+    left: 0;
+    background: var(--surface);
+    border: 1px solid var(--border-dark);
+    border-radius: 4px;
+    box-shadow: 0 4px 12px rgb(0 0 0 / 12%);
+    min-width: 210px;
+    z-index: 200;
+    padding: 4px 0;
+}
+
+.m-item.open .m-drop {
+    display: block;
+}
+
+.m-opt {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 6px 16px;
+    font-size: 13px;
+    color: var(--text);
+    cursor: pointer;
+    gap: 24px;
+    transition: background 0.08s;
+}
+
+.m-opt:hover {
+    background: var(--bg-header);
+}
+
+.m-opt-disabled {
+    color: var(--text-3);
+    cursor: not-allowed;
+}
+
+.m-opt-disabled:hover {
+    background: transparent;
+}
+
+.m-opt .kbd {
+    color: var(--text-3);
+    font-size: 11px;
+    flex-shrink: 0;
+}
+
+.m-sep {
+    height: 1px;
+    background: var(--border);
+    margin: 4px 0;
+}
