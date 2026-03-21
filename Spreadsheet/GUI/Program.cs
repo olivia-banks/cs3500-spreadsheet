@@ -1,12 +1,14 @@
 using System;
+using System.Collections.Generic;
 using GUI.Components;
 using GUI.Components.Services;
 using Microsoft.AspNetCore.Builder;
-using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.AI;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using System.Linq;
+using System.Net.Http;
+using System.Text.Json;
 
 namespace GUI
 {
@@ -21,37 +23,8 @@ namespace GUI
                 .AddInteractiveServerComponents();
 
             // Add AI service to our app.
-            var ollamaEndpoint = builder.Configuration["AI:Ollama:Endpoint"] ?? "http://localhost:11434";
-            var configuredModels = builder.Configuration
-                .GetSection("AI:Ollama:Models")
-                .Get<string[]>()?
-                .Where(m => !string.IsNullOrWhiteSpace(m))
-                .ToArray()
-                ?? [];
-
-            var selectedModel = builder.Configuration["AI:Ollama:SelectedModel"];
-            string modelToUse;
-
-            if (!string.IsNullOrWhiteSpace(selectedModel))
-            {
-                modelToUse = selectedModel;
-            }
-            else if (configuredModels.Length == 1)
-            {
-                // If there is exactly one configured model, default to it automatically.
-                modelToUse = configuredModels[0];
-            }
-            else if (configuredModels.Length > 1)
-            {
-                throw new InvalidOperationException(
-                    "Multiple AI models are configured. Set AI:Ollama:SelectedModel to choose one.");
-            }
-            else
-            {
-                throw new InvalidOperationException(
-                    "No AI models configured. Set AI:Ollama:Models in appsettings.json.");
-            }
-
+            var ollamaEndpoint = builder.Configuration["Ollama:Endpoint"] ?? "http://localhost:11434";
+            var modelToUse = DiscoverOllamaModel(ollamaEndpoint);
             builder.Services.AddChatClient(new OllamaChatClient(new Uri(ollamaEndpoint), modelToUse));
             builder.Services.AddScoped<SpreadsheetAIService>();
 
@@ -74,6 +47,55 @@ namespace GUI
                 .AddInteractiveServerRenderMode();
 
             app.Run();
+        }
+
+        private static string DiscoverOllamaModel(string endpoint)
+        {
+            using var httpClient = new HttpClient { BaseAddress = new Uri(endpoint) };
+            using var response = httpClient.GetAsync("/api/tags").GetAwaiter().GetResult();
+
+            if (!response.IsSuccessStatusCode)
+            {
+                throw new InvalidOperationException(
+                    $"Failed to query Ollama models from {endpoint}/api/tags (status {(int)response.StatusCode}).");
+            }
+
+            using var stream = response.Content.ReadAsStream();
+            var payload = JsonSerializer.Deserialize<OllamaTagsResponse>(stream, new JsonSerializerOptions
+            {
+                PropertyNameCaseInsensitive = true,
+            });
+
+            var models = payload?.Models?
+                .Select(m => m.Name ?? string.Empty)
+                .Where(name => !string.IsNullOrWhiteSpace(name))
+                .Distinct(StringComparer.Ordinal)
+                .OrderBy(name => name, StringComparer.Ordinal)
+                .ToArray()
+                ?? [];
+
+            if (models.Length == 0)
+            {
+                throw new InvalidOperationException(
+                    $"No Ollama models discovered at {endpoint}. Pull at least one model (e.g., `ollama pull qwen3:0.6B`).");
+            }
+
+            if (models.Length > 1)
+            {
+                Console.WriteLine($"Multiple Ollama models discovered. Defaulting to '{models[0]}'. Available: {string.Join(", ", models)}");
+            }
+
+            return models[0];
+        }
+
+        private sealed class OllamaTagsResponse
+        {
+            public List<OllamaModelInfo>? Models { get; set; }
+        }
+
+        private sealed class OllamaModelInfo
+        {
+            public string? Name { get; set; }
         }
     }
 }

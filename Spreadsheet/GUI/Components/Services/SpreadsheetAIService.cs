@@ -8,7 +8,6 @@ namespace GUI.Components.Services;
 using System.Collections.Generic;
 using System.Threading.Tasks;
 using GUI.Components.Tools;
-using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.AI;
 using Spreadsheet;
 
@@ -61,14 +60,13 @@ Response style:
     /// Initializes a new instance of the <see cref="SpreadsheetAIService"/> class.
     /// </summary>
     /// <param name="chatClient">The underlying chat client to use for AI responses.</param>
-    /// <param name="configuration">The application configuration source.</param>
-    public SpreadsheetAIService(IChatClient chatClient, IConfiguration configuration)
+    public SpreadsheetAIService(IChatClient chatClient)
     {
         _chatClient = new ChatClientBuilder(chatClient)
             .UseFunctionInvocation()
             .Build();
 
-        _systemPrompt = configuration["AI:SystemPrompt"] ?? DefaultSystemPrompt;
+        _systemPrompt = DefaultSystemPrompt;
     }
 
     /// <summary>
