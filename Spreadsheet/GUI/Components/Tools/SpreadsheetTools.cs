@@ -8,7 +8,10 @@ using System.Text;
 namespace GUI.Components.Tools;
 
 using System;
+using System.Collections.Generic;
 using System.ComponentModel;
+using System.Linq;
+using Formula;
 using Spreadsheet;
 
 /// <summary>
@@ -61,5 +64,146 @@ public class SpreadsheetTools(Spreadsheet sheet)
             allActiveCells.Append(cellName);
         }
         return "Success, these are all the filled cells: " + allActiveCells.ToString();
+    }
+
+    /// <summary>
+    /// Gets the evaluated value of a spreadsheet cell as a string.
+    /// For formula cells, returns the computed result. For text/number cells, returns the value.
+    /// </summary>
+    /// <param name="cellName">The cell coordinate (e.g., "A1").</param>
+    /// <returns>The evaluated value of the cell, or an error message if the cell could not be evaluated.</returns>
+    [Description("Gets the evaluated value of a spreadsheet cell.")]
+    public string GetCellValue(string cellName)
+    {
+        try
+        {
+            var value = sheet.GetCellValue(cellName);
+            return value switch
+            {
+                string s => $"Cell {cellName} value: {s}",
+                double d => $"Cell {cellName} value: {d}",
+                FormulaError fe => $"Cell {cellName} error: {fe.Reason}",
+                _ => $"Cell {cellName} value: {value}"
+            };
+        }
+        catch (Exception ex)
+        {
+            return $"Error reading cell {cellName}: {ex.Message}";
+        }
+    }
+
+    /// <summary>
+    /// Gets all cell values in a rectangular range (e.g., "A1:C5").
+    /// Returns a formatted string with each cell's value.
+    /// </summary>
+    /// <param name="rangeStart">Starting cell (e.g., "A1").</param>
+    /// <param name="rangeEnd">Ending cell (e.g., "C5").</param>
+    /// <returns>A formatted string containing all cell values in the range.</returns>
+    [Description("Gets all cell values in a rectangular range of cells (e.g., A1:C5).")]
+    public string GetCellRange(string rangeStart, string rangeEnd)
+    {
+        try
+        {
+            var results = new StringBuilder();
+            results.AppendLine($"Values in range {rangeStart}:{rangeEnd}:");
+
+            // Parse start and end cell names (e.g., "A1", "C5")
+            var startCol = ParseColumnIndex(rangeStart);
+            var startRow = ParseRowIndex(rangeStart);
+            var endCol = ParseColumnIndex(rangeEnd);
+            var endRow = ParseRowIndex(rangeEnd);
+
+            for (var r = startRow; r <= endRow; r++)
+            {
+                for (var c = startCol; c <= endCol; c++)
+                {
+                    var cellName = $"{(char)('A' + c)}{r + 1}";
+                    var value = sheet.GetCellValue(cellName);
+                    var valueStr = value switch
+                    {
+                        string s => s,
+                        double d => d.ToString(),
+                        FormulaError fe => $"Error: {fe.Reason}",
+                        _ => value.ToString()
+                    };
+                    results.Append($"{cellName}={valueStr} | ");
+                }
+                results.AppendLine();
+            }
+
+            return results.ToString();
+        }
+        catch (Exception ex)
+        {
+            return $"Error reading range {rangeStart}:{rangeEnd}: {ex.Message}";
+        }
+    }
+
+    /// <summary>
+    /// Gets the immediate dependencies of a cell (cells that this cell depends on in formulas).
+    /// </summary>
+    /// <param name="cellName">The cell name (e.g., "A1").</param>
+    /// <returns>A formatted list of cells that the given cell depends on.</returns>
+    [Description("Gets the cells that a given cell depends on (cells referenced in its formula).")]
+    public string GetCellDependencies(string cellName)
+    {
+        try
+        {
+            var deps = sheet.GetCellDependencies(cellName).ToList();
+            if (deps.Count == 0)
+                return $"Cell {cellName} has no dependencies (is not a formula or does not reference other cells).";
+
+            var result = new StringBuilder();
+            result.AppendLine($"Cell {cellName} depends on: {string.Join(", ", deps)}");
+            return result.ToString();
+        }
+        catch (Exception ex)
+        {
+            return $"Error getting dependencies for {cellName}: {ex.Message}";
+        }
+    }
+
+    /// <summary>
+    /// Gets the immediate dependents of a cell (cells whose formulas reference this cell).
+    /// </summary>
+    /// <param name="cellName">The cell name (e.g., "A1").</param>
+    /// <returns>A formatted list of cells that depend on the given cell.</returns>
+    [Description("Gets the cells that depend on a given cell (cells whose formulas reference it).")]
+    public string GetCellDependents(string cellName)
+    {
+        try
+        {
+            var deps = sheet.GetCellDependents(cellName).ToList();
+            if (deps.Count == 0)
+                return $"No cells depend on {cellName}.";
+
+            var result = new StringBuilder();
+            result.AppendLine($"Cells that depend on {cellName}: {string.Join(", ", deps)}");
+            return result.ToString();
+        }
+        catch (Exception ex)
+        {
+            return $"Error getting dependents for {cellName}: {ex.Message}";
+        }
+    }
+
+    /// <summary>
+    /// Helper method to parse column index from Excel cell notation (A=0, B=1, ..., Z=25).
+    /// </summary>
+    private static int ParseColumnIndex(string cellName)
+    {
+        if (string.IsNullOrEmpty(cellName) || !char.IsLetter(cellName[0]))
+            throw new ArgumentException($"Invalid cell name: {cellName}");
+        return cellName[0] - 'A';
+    }
+
+    /// <summary>
+    /// Helper method to parse row index from Excel cell notation (1-based → 0-based, so row 1 = index 0).
+    /// </summary>
+    private static int ParseRowIndex(string cellName)
+    {
+        if (string.IsNullOrEmpty(cellName) || !int.TryParse(cellName.Substring(1), out var row) || row < 1)
+            throw new ArgumentException($"Invalid cell name: {cellName}");
+        return row - 1;  // Convert 1-based row to 0-based index
     }
 }

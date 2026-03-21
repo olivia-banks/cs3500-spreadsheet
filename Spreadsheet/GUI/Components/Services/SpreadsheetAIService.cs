@@ -8,6 +8,7 @@ namespace GUI.Components.Services;
 using System.Collections.Generic;
 using System.Threading.Tasks;
 using GUI.Components.Tools;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.AI;
 using Spreadsheet;
 
@@ -16,6 +17,25 @@ using Spreadsheet;
 /// </summary>
 public class SpreadsheetAIService
 {
+    private const string DefaultSystemPrompt = """
+You are BMOS AI, a spreadsheet assistant.
+
+Goals:
+- Be correct, concise, and practical.
+- Prefer using available spreadsheet tools to inspect state before giving specific claims.
+
+Tool behavior:
+- When asked about existing data, use read tools first.
+- Only modify cells when the user clearly requests a change.
+- After modifications, summarize what changed (cell names and values/formulas).
+
+Response style:
+- Keep responses short unless the user asks for detail.
+- If ambiguous, ask one focused follow-up question.
+- Never invent cell values you have not read.
+- Never use emoji or casual language.
+""";
+
     /// <summary>
     /// The client used to communicate with the chat service.
     /// </summary>
@@ -25,6 +45,7 @@ public class SpreadsheetAIService
     /// thread-safety and preventing accidental reassignment.
     /// </remarks>
     private readonly IChatClient _chatClient;
+    private readonly string _systemPrompt;
 
     /// <summary>
     /// Gets the conversation history for the current session.
@@ -40,11 +61,14 @@ public class SpreadsheetAIService
     /// Initializes a new instance of the <see cref="SpreadsheetAIService"/> class.
     /// </summary>
     /// <param name="chatClient">The underlying chat client to use for AI responses.</param>
-    public SpreadsheetAIService(IChatClient chatClient)
+    /// <param name="configuration">The application configuration source.</param>
+    public SpreadsheetAIService(IChatClient chatClient, IConfiguration configuration)
     {
         _chatClient = new ChatClientBuilder(chatClient)
             .UseFunctionInvocation()
             .Build();
+
+        _systemPrompt = configuration["AI:SystemPrompt"] ?? DefaultSystemPrompt;
     }
 
     /// <summary>
@@ -52,14 +76,19 @@ public class SpreadsheetAIService
     /// </summary>
     /// <param name="input">The user's natural language request.</param>
     /// <param name="activeSheet">The spreadsheet instance to be manipulated by the AI.</param>
-    /// <returns>A task representing the asynchronous operation.</returns>
-    public async Task ProcessQueryAsync(string input, Spreadsheet activeSheet)
+    /// <returns>The assistant's response text.</returns>
+    public async Task<string> ProcessQueryAsync(string input, Spreadsheet activeSheet)
     {
-        if (string.IsNullOrWhiteSpace(input)) return;
+        if (string.IsNullOrWhiteSpace(input)) return string.Empty;
         IsProcessing = true;
 
         try
         {
+            if (ChatHistory.Count == 0)
+            {
+                ChatHistory.Add(new ChatMessage(ChatRole.System, _systemPrompt));
+            }
+
             ChatHistory.Add(new ChatMessage(ChatRole.User, input));
 
             // Define the tools available to the AI based on the current sheet context
@@ -69,18 +98,21 @@ public class SpreadsheetAIService
                 Tools = [
                     AIFunctionFactory.Create(tools.SetCellContent),
                     AIFunctionFactory.Create(tools.GetCellContentInfo),
-                    AIFunctionFactory.Create(tools.GetActiveCells)
+                    AIFunctionFactory.Create(tools.GetActiveCells),
+                    AIFunctionFactory.Create(tools.GetCellValue),
+                    AIFunctionFactory.Create(tools.GetCellRange),
+                    AIFunctionFactory.Create(tools.GetCellDependencies),
+                    AIFunctionFactory.Create(tools.GetCellDependents)
                 ]
             };
 
             // Request response from AI; if it needs data, it will call the tools provided above
             var response = await _chatClient.GetResponseAsync(ChatHistory, options);
 
-            // Save the AI's response to the history
-            if (response.Messages.Count >= 3)
-                ChatHistory.Add(response.Messages[2]);
-            else
-                ChatHistory.Add(response.Messages[0]);
+            // Save the AI's response to the history and return its text
+            var botMessage = response.Messages.Count >= 3 ? response.Messages[2] : response.Messages[0];
+            ChatHistory.Add(botMessage);
+            return botMessage.Text ?? string.Empty;
         }
         finally
         {

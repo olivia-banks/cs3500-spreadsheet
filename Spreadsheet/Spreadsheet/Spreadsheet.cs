@@ -659,6 +659,43 @@ public class Spreadsheet
             .Select(c => CellLocation.Canonicalize(c.ColumnIndex, c.RowIndex))
             .ToList();
     }
+
+    /// <summary>
+    /// Gets the immediate cells that depend on the given cell (i.e., cells whose formulas reference the given cell).
+    /// </summary>
+    /// <param name="name">The cell name (e.g., "A1").</param>
+    /// <returns>An enumerable of cell names that directly depend on the given cell.</returns>
+    public IEnumerable<string> GetCellDependents(string name)
+    {
+        try
+        {
+            var location = LocationOfReference(name);
+            return _dependencyGraph.GetDependents(CellLocation.Canonicalize(location.ColumnIndex, location.RowIndex));
+        }
+        catch (Exception)
+        {
+            return Enumerable.Empty<string>();
+        }
+    }
+
+    /// <summary>
+    /// Gets the immediate cells that the given cell depends on (i.e., cells referenced in the given cell's formula).
+    /// Only works for formula cells; text and number cells have no dependencies.
+    /// </summary>
+    /// <param name="name">The cell name (e.g., "A1").</param>
+    /// <returns>An enumerable of cell names that the given cell directly depends on.</returns>
+    public IEnumerable<string> GetCellDependencies(string name)
+    {
+        try
+        {
+            var location = LocationOfReference(name);
+            return _dependencyGraph.GetDependees(CellLocation.Canonicalize(location.ColumnIndex, location.RowIndex));
+        }
+        catch (Exception)
+        {
+            return Enumerable.Empty<string>();
+        }
+    }
 }
 
 /// <summary>
