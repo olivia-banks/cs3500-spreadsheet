@@ -12,8 +12,19 @@ using System.Text.Json;
 
 namespace GUI
 {
+    /// <summary>
+    ///     <para>
+    ///         Application entry point and ASP.NET Core host configuration for the GUI project.
+    ///     </para>
+    /// </summary>
     public class Program
     {
+        /// <summary>
+        ///     <para>
+        ///         Configures services, middleware, and routes, then starts the web application.
+        ///     </para>
+        /// </summary>
+        /// <param name="args">Command-line arguments for the host.</param>
         public static void Main( string[] args )
         {
             var builder = WebApplication.CreateBuilder(args);
@@ -49,6 +60,13 @@ namespace GUI
             app.Run();
         }
 
+        /// <summary>
+        ///     <para>
+        ///         Queries the Ollama endpoint for available models and selects a default model name.
+        ///     </para>
+        /// </summary>
+        /// <param name="endpoint">The base URL of the Ollama service.</param>
+        /// <returns>The selected Ollama model name.</returns>
         private static string DiscoverOllamaModel(string endpoint)
         {
             using var httpClient = new HttpClient { BaseAddress = new Uri(endpoint) };
@@ -88,13 +106,33 @@ namespace GUI
             return models[0];
         }
 
+        /// <summary>
+        ///     <para>
+        ///         Deserializable payload shape for Ollama's <c>/api/tags</c> response.
+        ///     </para>
+        /// </summary>
         private sealed class OllamaTagsResponse
         {
+            /// <summary>
+            ///     <para>
+            ///         The list of discovered model descriptors.
+            ///     </para>
+            /// </summary>
             public List<OllamaModelInfo>? Models { get; set; }
         }
 
+        /// <summary>
+        ///     <para>
+        ///         Minimal model descriptor used to read an Ollama model name.
+        ///     </para>
+        /// </summary>
         private sealed class OllamaModelInfo
         {
+            /// <summary>
+            ///     <para>
+            ///         The model identifier reported by Ollama.
+            ///     </para>
+            /// </summary>
             public string? Name { get; set; }
         }
     }

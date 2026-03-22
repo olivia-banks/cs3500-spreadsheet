@@ -16,18 +16,74 @@ using SpreadsheetDoc = Spreadsheet.Spreadsheet;
 
 namespace GUI.Components.Pages;
 
+/// <summary>
+///     <para>
+///         Main spreadsheet page state and interaction logic for grid editing, search, AI, and persistence.
+///     </para>
+/// </summary>
 public partial class SpreadsheetPage : IAsyncDisposable
 {
+    /// <summary>
+    ///     <para>
+    ///         Total number of visible spreadsheet rows.
+    ///     </para>
+    /// </summary>
     private const int Rows = 50;
+
+    /// <summary>
+    ///     <para>
+    ///         Total number of visible spreadsheet columns.
+    ///     </para>
+    /// </summary>
     private const int Cols = 26;
+
+    /// <summary>
+    ///     <para>
+    ///         Default name assigned to a newly initialized document.
+    ///     </para>
+    /// </summary>
     private const string DefaultDocumentName = "Q3 Variance Report";
+
+    /// <summary>
+    ///     <para>
+    ///         Maximum browser-upload stream size accepted for spreadsheet import.
+    ///     </para>
+    /// </summary>
     private const long MaxUploadBytes = 5 * 1024 * 1024;
+
+    /// <summary>
+    ///     <para>
+    ///         Maximum buffer size used while reading uploaded JSON content.
+    ///     </para>
+    /// </summary>
     private const int MaxFileReadBytes = 2 * 1024 * 1024;
 
+    /// <summary>
+    ///     <para>
+    ///         Active backend spreadsheet document.
+    ///     </para>
+    /// </summary>
     private SpreadsheetDoc _sheet = new();
+
+    /// <summary>
+    ///     <para>
+    ///         Set of cell keys currently matching the active find query.
+    ///     </para>
+    /// </summary>
     private readonly HashSet<string> _findMatches = new();
+
+    /// <summary>
+    ///     <para>
+    ///         Local-storage documents currently loaded into the open dialog.
+    ///     </para>
+    /// </summary>
     private readonly List<LocalDocument> _localDocuments = [];
 
+    /// <summary>
+    ///     <para>
+    ///         Built-in sample document metadata for template loading.
+    ///     </para>
+    /// </summary>
     private readonly List<SampleDocument> _sampleDocuments =
     [
         new("Q3 Variance Report", "Jul 14, 2025", SampleTemplateKey.Q3VarianceReport),
@@ -37,58 +93,260 @@ public partial class SpreadsheetPage : IAsyncDisposable
     ];
 
     [Inject]
+    /// <summary>
+    ///     <para>
+    ///         JS runtime used for module import and browser interop.
+    ///     </para>
+    /// </summary>
     private IJSRuntime JS { get; set; } = default!;
 
+    /// <summary>
+    ///     <para>
+    ///         DotNet callback reference passed to JavaScript.
+    ///     </para>
+    /// </summary>
     private DotNetObjectReference<SpreadsheetPage>? _dotNetRef;
+
+    /// <summary>
+    ///     <para>
+    ///         JS module handle for spreadsheet page helpers.
+    ///     </para>
+    /// </summary>
     private IJSObjectReference? _jsModule;
+
+    /// <summary>
+    ///     <para>
+    ///         Whether the cell edit input should be focused after render.
+    ///     </para>
+    /// </summary>
     private bool _needsFocusEditInput;
 
+    /// <summary>
+    ///     <para>
+    ///         Cancellation source for replacing in-flight notification timers.
+    ///     </para>
+    /// </summary>
     private CancellationTokenSource? _notificationCts;
 
+    /// <summary>
+    ///     <para>
+    ///         Zero-based row index of current selection.
+    ///     </para>
+    /// </summary>
     private int SelectedRow { get; set; }
+
+    /// <summary>
+    ///     <para>
+    ///         Zero-based column index of current selection.
+    ///     </para>
+    /// </summary>
     private int SelectedCol { get; set; }
 
+    /// <summary>
+    ///     <para>
+    ///         Zero-based row index currently being edited in-grid.
+    ///     </para>
+    /// </summary>
     private int EditingRow { get; set; } = -1;
+
+    /// <summary>
+    ///     <para>
+    ///         Zero-based column index currently being edited in-grid.
+    ///     </para>
+    /// </summary>
     private int EditingCol { get; set; } = -1;
 
+    /// <summary>
+    ///     <para>
+    ///         Whether the save modal is currently open.
+    ///     </para>
+    /// </summary>
     private bool SaveModalOpen { get; set; }
+
+    /// <summary>
+    ///     <para>
+    ///         Whether the load modal is currently open.
+    ///     </para>
+    /// </summary>
     private bool LoadModalOpen { get; set; }
+
+    /// <summary>
+    ///     <para>
+    ///         Whether the about modal is currently open.
+    ///     </para>
+    /// </summary>
     private bool AboutModalOpen { get; set; }
 
+    /// <summary>
+    ///     <para>
+    ///         Whether the find bar is visible.
+    ///     </para>
+    /// </summary>
     private bool FindVisible { get; set; }
+
+    /// <summary>
+    ///     <para>
+    ///         Whether a cell is currently in edit mode.
+    ///     </para>
+    /// </summary>
     private bool Editing { get; set; }
+
+    /// <summary>
+    ///     <para>
+    ///         Whether the current document is marked saved.
+    ///     </para>
+    /// </summary>
     private bool IsSaved { get; set; } = true;
+
+    /// <summary>
+    ///     <para>
+    ///         Whether toast notification UI is currently visible.
+    ///     </para>
+    /// </summary>
     private bool NotificationVisible { get; set; }
 
+    /// <summary>
+    ///     <para>
+    ///         Current zoom factor for grid rendering.
+    ///     </para>
+    /// </summary>
     private double Zoom { get; set; } = 1;
 
+    /// <summary>
+    ///     <para>
+    ///         Active document display name.
+    ///     </para>
+    /// </summary>
     private string DocumentName { get; set; } = DefaultDocumentName;
+
+    /// <summary>
+    ///     <para>
+    ///         Pending save name entered in the save modal.
+    ///     </para>
+    /// </summary>
     private string SaveName { get; set; } = DefaultDocumentName;
+
+    /// <summary>
+    ///     <para>
+    ///         Current formula-bar text.
+    ///     </para>
+    /// </summary>
     private string FormulaInput { get; set; } = string.Empty;
+
+    /// <summary>
+    ///     <para>
+    ///         Temporary edit text for in-grid editing.
+    ///     </para>
+    /// </summary>
     private string EditingValue { get; set; } = string.Empty;
+
+    /// <summary>
+    ///     <para>
+    ///         Current query text used by find.
+    ///     </para>
+    /// </summary>
     private string FindQuery { get; set; } = string.Empty;
+
+    /// <summary>
+    ///     <para>
+    ///         Name of currently open top-level menu, if any.
+    ///     </para>
+    /// </summary>
     private string? OpenMenuName { get; set; }
+
+    /// <summary>
+    ///     <para>
+    ///         Current notification message content.
+    ///     </para>
+    /// </summary>
     private string NotificationMessage { get; set; } = string.Empty;
+
+    /// <summary>
+    ///     <para>
+    ///         Sample document name pending confirmation/open.
+    ///     </para>
+    /// </summary>
     private string? PendingOpenDocument { get; set; }
+
+    /// <summary>
+    ///     <para>
+    ///         Local-storage document currently selected in load modal.
+    ///     </para>
+    /// </summary>
     private string? SelectedLocalDocumentName { get; set; }
 
+    /// <summary>
+    ///     <para>
+    ///         Selected save destination for save modal actions.
+    ///     </para>
+    /// </summary>
     private SaveDestination SelectedSaveDestination { get; set; } = SaveDestination.LocalStorage;
 
+    /// <summary>
+    ///     <para>
+    ///         Timestamp for the most recent successful save operation.
+    ///     </para>
+    /// </summary>
     private DateTimeOffset? LastSavedAt { get; set; }
 
+    /// <summary>
+    ///     <para>
+    ///         A1-style reference for the currently selected cell.
+    ///     </para>
+    /// </summary>
     private string SelectedCellRef => $"{ColumnLabel(SelectedCol)}{SelectedRow + 1}";
+
+    /// <summary>
+    ///     <para>
+    ///         Display value for the selected cell used by the status bar.
+    ///     </para>
+    /// </summary>
     private string SelectedCellDisplay => string.IsNullOrWhiteSpace(CellValue(SelectedRow, SelectedCol)) ? "-" : CellValue(SelectedRow, SelectedCol);
+
+    /// <summary>
+    ///     <para>
+    ///         Human-readable zoom percentage label.
+    ///     </para>
+    /// </summary>
     private string ZoomPercentText => $"{(int)Math.Round(Zoom * 100)}%";
+
+    /// <summary>
+    ///     <para>
+    ///         Inline transform style applied to the grid for zooming.
+    ///     </para>
+    /// </summary>
     private string ZoomStyle => $"transform: scale({Zoom.ToString("0.0", CultureInfo.InvariantCulture)}); transform-origin: top left;";
+
+    /// <summary>
+    ///     <para>
+    ///         Available built-in sample documents shown in open flows.
+    ///     </para>
+    /// </summary>
     private IReadOnlyList<SampleDocument> SampleDocuments => _sampleDocuments;
+
+    /// <summary>
+    ///     <para>
+    ///         Local documents discovered from browser local storage.
+    ///     </para>
+    /// </summary>
     private IReadOnlyList<LocalDocument> LocalDocuments => _localDocuments;
 
+    /// <summary>
+    ///     <para>
+    ///         Current find-match counter text for the find toolbar.
+    ///     </para>
+    /// </summary>
     private string FindCountText => string.IsNullOrWhiteSpace(FindQuery)
         ? string.Empty
         : _findMatches.Count > 0
             ? $"{_findMatches.Count} found"
             : "No matches";
 
+    /// <summary>
+    ///     <para>
+    ///         Relative last-saved label shown in the status bar.
+    ///     </para>
+    /// </summary>
     private string LastSavedLabel
     {
         get
@@ -115,11 +373,22 @@ public partial class SpreadsheetPage : IAsyncDisposable
         }
     }
 
+    /// <summary>
+    ///     <para>
+    ///         Initializes page state with the default sample template.
+    ///     </para>
+    /// </summary>
     protected override void OnInitialized()
     {
         LoadTemplate(SampleTemplateKey.Q3VarianceReport, DefaultDocumentName, markSaved: true);
     }
 
+    /// <summary>
+    ///     <para>
+    ///         Performs first-render JS initialization and deferred edit-input focus.
+    ///     </para>
+    /// </summary>
+    /// <param name="firstRender">Whether this is the first render pass.</param>
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
         if (firstRender)
@@ -138,6 +407,11 @@ public partial class SpreadsheetPage : IAsyncDisposable
         }
     }
 
+    /// <summary>
+    ///     <para>
+    ///         Releases JS interop resources used by the page.
+    ///     </para>
+    /// </summary>
     public async ValueTask DisposeAsync()
     {
         if (_jsModule is not null)
@@ -164,7 +438,15 @@ public partial class SpreadsheetPage : IAsyncDisposable
         _dotNetRef?.Dispose();
     }
 
-    /// <summary>Called from the document-level JS keydown listener in spreadsheetGrid.js.</summary>
+    /// <summary>
+    ///     <para>
+    ///         Called from the document-level JS keydown listener in <c>spreadsheetGrid.js</c>.
+    ///     </para>
+    /// </summary>
+    /// <param name="key">The pressed key identifier.</param>
+    /// <param name="ctrl">Whether Ctrl/Meta is pressed.</param>
+    /// <param name="shift">Whether Shift is pressed.</param>
+    /// <param name="alt">Whether Alt is pressed.</param>
     [JSInvokable]
     public Task HandleKeyFromJs(string key, bool ctrl, bool shift, bool alt)
     {
@@ -182,6 +464,11 @@ public partial class SpreadsheetPage : IAsyncDisposable
         });
     }
 
+    /// <summary>
+    ///     <para>
+    ///         Called from JS to close open top-level menus when clicking outside.
+    ///     </para>
+    /// </summary>
     [JSInvokable]
     public Task CloseMenusFromJs()
     {
@@ -192,10 +479,25 @@ public partial class SpreadsheetPage : IAsyncDisposable
         });
     }
 
+    /// <summary>
+    ///     <para>
+    ///         Produces a stable key for row/column pairs used by match tracking.
+    ///     </para>
+    /// </summary>
     private static string CellKey(int row, int col) => $"{row},{col}";
 
+    /// <summary>
+    ///     <para>
+    ///         Converts a zero-based column index to its spreadsheet letter label.
+    ///     </para>
+    /// </summary>
     private static string ColumnLabel(int col) => ((char)('A' + col)).ToString(CultureInfo.InvariantCulture);
 
+    /// <summary>
+    ///     <para>
+    ///         Converts zero-based row/column coordinates to A1 notation.
+    ///     </para>
+    /// </summary>
     private static string ToSheetName(int row, int col) => $"{(char)('A' + col)}{row + 1}";
 
     // Returns the raw input string for a cell (formula text for formula cells, else the value text).
@@ -219,6 +521,11 @@ public partial class SpreadsheetPage : IAsyncDisposable
         }
     }
 
+    /// <summary>
+    ///     <para>
+    ///         Returns the display value for a grid cell from the backend sheet.
+    ///     </para>
+    /// </summary>
     private string CellValue(int row, int col)
     {
         try
@@ -238,10 +545,25 @@ public partial class SpreadsheetPage : IAsyncDisposable
         }
     }
 
+    /// <summary>
+    ///     <para>
+    ///         Determines whether the given coordinates are the currently edited cell.
+    ///     </para>
+    /// </summary>
     private bool IsEditingCell(int row, int col) => Editing && row == EditingRow && col == EditingCol;
 
+    /// <summary>
+    ///     <para>
+    ///         Determines whether the given cell coordinates are part of current find results.
+    ///     </para>
+    /// </summary>
     private bool IsFindMatch(int row, int col) => _findMatches.Contains(CellKey(row, col));
 
+    /// <summary>
+    ///     <para>
+    ///         Selects a cell and synchronizes formula input with that selection.
+    ///     </para>
+    /// </summary>
     private void SelectCell(int row, int col)
     {
         if (Editing)
@@ -254,6 +576,11 @@ public partial class SpreadsheetPage : IAsyncDisposable
         SyncFormulaInputWithSelection();
     }
 
+    /// <summary>
+    ///     <para>
+    ///         Enters in-cell edit mode for the specified coordinates.
+    ///     </para>
+    /// </summary>
     private void StartEdit(int row, int col)
     {
         SelectCell(row, col);
@@ -264,6 +591,11 @@ public partial class SpreadsheetPage : IAsyncDisposable
         _needsFocusEditInput = true;
     }
 
+    /// <summary>
+    ///     <para>
+    ///         Starts editing the selected cell prefilled with an initial typed character.
+    ///     </para>
+    /// </summary>
     private void StartEditWithCharacter(string character)
     {
         Editing = true;
@@ -273,11 +605,21 @@ public partial class SpreadsheetPage : IAsyncDisposable
         _needsFocusEditInput = true;
     }
 
+    /// <summary>
+    ///     <para>
+    ///         Updates temporary edit text while editing a cell.
+    ///     </para>
+    /// </summary>
     private void OnEditChanged(ChangeEventArgs args)
     {
         EditingValue = args.Value?.ToString() ?? string.Empty;
     }
 
+    /// <summary>
+    ///     <para>
+    ///         Commits current edit text to the selected cell.
+    ///     </para>
+    /// </summary>
     private void CommitEdit()
     {
         if (!Editing)
@@ -293,6 +635,11 @@ public partial class SpreadsheetPage : IAsyncDisposable
         SyncFormulaInputWithSelection();
     }
 
+    /// <summary>
+    ///     <para>
+    ///         Exits edit mode without applying pending edits.
+    ///     </para>
+    /// </summary>
     private void CancelEdit()
     {
         Editing = false;
@@ -301,6 +648,11 @@ public partial class SpreadsheetPage : IAsyncDisposable
         EditingValue = string.Empty;
     }
 
+    /// <summary>
+    ///     <para>
+    ///         Writes a value to a cell and updates dirty/find state.
+    ///     </para>
+    /// </summary>
     private void SetCell(int row, int col, string? value)
     {
         try
@@ -325,6 +677,11 @@ public partial class SpreadsheetPage : IAsyncDisposable
         }
     }
 
+    /// <summary>
+    ///     <para>
+    ///         Clears the currently selected cell.
+    ///     </para>
+    /// </summary>
     private void ClearSelectedCell()
     {
         CancelEdit();
@@ -333,6 +690,11 @@ public partial class SpreadsheetPage : IAsyncDisposable
         Notify("Cell cleared");
     }
 
+    /// <summary>
+    ///     <para>
+    ///         Moves the active selection by the provided row/column offsets.
+    ///     </para>
+    /// </summary>
     private void MoveSelection(int rowOffset, int colOffset)
     {
         SelectCell(
@@ -340,11 +702,21 @@ public partial class SpreadsheetPage : IAsyncDisposable
             Math.Clamp(SelectedCol + colOffset, 0, Cols - 1));
     }
 
+    /// <summary>
+    ///     <para>
+    ///         Updates formula bar text from user input.
+    ///     </para>
+    /// </summary>
     private void OnFormulaChanged(ChangeEventArgs args)
     {
         FormulaInput = args.Value?.ToString() ?? string.Empty;
     }
 
+    /// <summary>
+    ///     <para>
+    ///         Commits formula bar text when Enter is pressed.
+    ///     </para>
+    /// </summary>
     private void HandleFormulaKeyDown(KeyboardEventArgs args)
     {
         if (args.Key != "Enter")
@@ -356,6 +728,11 @@ public partial class SpreadsheetPage : IAsyncDisposable
         SyncFormulaInputWithSelection();
     }
 
+    /// <summary>
+    ///     <para>
+    ///         Refreshes formula bar text from the currently selected backend cell contents.
+    ///     </para>
+    /// </summary>
     private void SyncFormulaInputWithSelection()
     {
         try
@@ -375,6 +752,11 @@ public partial class SpreadsheetPage : IAsyncDisposable
         }
     }
 
+    /// <summary>
+    ///     <para>
+    ///         Synchronizes selection/edit/find/saved UI state with current spreadsheet data.
+    ///     </para>
+    /// </summary>
     private void SyncUIWithSpreadsheet()
     {
         CancelEdit();
@@ -404,6 +786,11 @@ public partial class SpreadsheetPage : IAsyncDisposable
         }
     }
 
+    /// <summary>
+    ///     <para>
+    ///         Handles keyboard behavior while in in-cell edit mode.
+    ///     </para>
+    /// </summary>
     private async Task HandleEditKeyDown(KeyboardEventArgs args)
     {
         if (args.Key == "Enter")
@@ -424,6 +811,11 @@ public partial class SpreadsheetPage : IAsyncDisposable
         await Task.CompletedTask;
     }
 
+    /// <summary>
+    ///     <para>
+    ///         Handles page-level keyboard shortcuts and navigation when not editing.
+    ///     </para>
+    /// </summary>
     private void HandleGlobalKeyDown(KeyboardEventArgs args)
     {
         if ((args.CtrlKey || args.MetaKey) && args.Key.Equals("f", StringComparison.OrdinalIgnoreCase))
@@ -495,22 +887,52 @@ public partial class SpreadsheetPage : IAsyncDisposable
         }
     }
 
+    /// <summary>
+    ///     <para>
+    ///         Increases sheet zoom level.
+    ///     </para>
+    /// </summary>
     private void ZoomIn() => Zoom = Math.Min(2, Math.Round(Zoom + 0.1, 1));
 
+    /// <summary>
+    ///     <para>
+    ///         Decreases sheet zoom level.
+    ///     </para>
+    /// </summary>
     private void ZoomOut() => Zoom = Math.Max(0.5, Math.Round(Zoom - 0.1, 1));
 
+    /// <summary>
+    ///     <para>
+    ///         Resets sheet zoom to 100%.
+    ///     </para>
+    /// </summary>
     private void ResetZoom() => Zoom = 1;
 
+    /// <summary>
+    ///     <para>
+    ///         Opens or closes a top-level menu by name.
+    ///     </para>
+    /// </summary>
     private void ToggleMenu(string menuName)
     {
         OpenMenuName = OpenMenuName == menuName ? null : menuName;
     }
 
+    /// <summary>
+    ///     <para>
+    ///         Closes all top-level menus.
+    ///     </para>
+    /// </summary>
     private void CloseMenus()
     {
         OpenMenuName = null;
     }
 
+    /// <summary>
+    ///     <para>
+    ///         Shows the find UI and computes current matches.
+    ///     </para>
+    /// </summary>
     private void ShowFind()
     {
         FindVisible = true;
@@ -518,6 +940,11 @@ public partial class SpreadsheetPage : IAsyncDisposable
         CloseMenus();
     }
 
+    /// <summary>
+    ///     <para>
+    ///         Hides the find UI and clears query/match state.
+    ///     </para>
+    /// </summary>
     private void HideFind()
     {
         FindVisible = false;
@@ -525,12 +952,22 @@ public partial class SpreadsheetPage : IAsyncDisposable
         _findMatches.Clear();
     }
 
+    /// <summary>
+    ///     <para>
+    ///         Updates find query text and recomputes cell matches.
+    ///     </para>
+    /// </summary>
     private void OnFindInput(ChangeEventArgs args)
     {
         FindQuery = args.Value?.ToString() ?? string.Empty;
         RefreshFindMatches();
     }
 
+    /// <summary>
+    ///     <para>
+    ///         Rebuilds the set of matched cells for the active find query.
+    ///     </para>
+    /// </summary>
     private void RefreshFindMatches()
     {
         _findMatches.Clear();
@@ -552,6 +989,11 @@ public partial class SpreadsheetPage : IAsyncDisposable
         }
     }
 
+    /// <summary>
+    ///     <para>
+    ///         Opens one modal and closes the others.
+    ///     </para>
+    /// </summary>
     private void OpenModal(ModalKind kind)
     {
         CloseMenus();
@@ -569,6 +1011,11 @@ public partial class SpreadsheetPage : IAsyncDisposable
         }
     }
 
+    /// <summary>
+    ///     <para>
+    ///         Closes the requested modal.
+    ///     </para>
+    /// </summary>
     private void CloseModal(ModalKind kind)
     {
         if (kind == ModalKind.Save)
@@ -585,6 +1032,11 @@ public partial class SpreadsheetPage : IAsyncDisposable
         }
     }
 
+    /// <summary>
+    ///     <para>
+    ///         Persists the current sheet to local storage or downloads it as JSON.
+    ///     </para>
+    /// </summary>
     private async Task ConfirmSaveAsync()
     {
         DocumentName = string.IsNullOrWhiteSpace(SaveName) ? "Untitled" : SaveName.Trim();
@@ -625,11 +1077,21 @@ public partial class SpreadsheetPage : IAsyncDisposable
         MarkSaved();
     }
 
+    /// <summary>
+    ///     <para>
+    ///         Stores the requested sample document name for a subsequent open action.
+    ///     </para>
+    /// </summary>
     private void OpenSample(string documentName)
     {
         PendingOpenDocument = documentName;
     }
 
+    /// <summary>
+    ///     <para>
+    ///         Opens the selected local-storage document into the active sheet.
+    ///     </para>
+    /// </summary>
     private async Task ConfirmOpenAsync()
     {
         if (string.IsNullOrWhiteSpace(SelectedLocalDocumentName))
@@ -664,11 +1126,21 @@ public partial class SpreadsheetPage : IAsyncDisposable
         }
     }
 
+    /// <summary>
+    ///     <para>
+    ///         Marks a local document as selected in the load modal.
+    ///     </para>
+    /// </summary>
     private void SelectLocalDocument(string documentName)
     {
         SelectedLocalDocumentName = documentName;
     }
 
+    /// <summary>
+    ///     <para>
+    ///         Deletes a local-storage document and refreshes the modal list.
+    ///     </para>
+    /// </summary>
     private async Task DeleteLocalDocumentAsync(string documentName)
     {
         if (_jsModule is null)
@@ -686,6 +1158,11 @@ public partial class SpreadsheetPage : IAsyncDisposable
         Notify($"Deleted local copy of {documentName}");
     }
 
+    /// <summary>
+    ///     <para>
+    ///         Imports a spreadsheet JSON file selected from the browser file picker.
+    ///     </para>
+    /// </summary>
     private async Task OnUploadSpreadsheetFileAsync(InputFileChangeEventArgs args)
     {
         var file = args.File;
@@ -713,6 +1190,11 @@ public partial class SpreadsheetPage : IAsyncDisposable
         }
     }
 
+    /// <summary>
+    ///     <para>
+    ///         Handles changes to the visible document name.
+    ///     </para>
+    /// </summary>
     private void OnDocumentNameChanged(ChangeEventArgs args)
     {
         DocumentName = args.Value?.ToString() ?? string.Empty;
@@ -720,11 +1202,21 @@ public partial class SpreadsheetPage : IAsyncDisposable
         MarkUnsaved();
     }
 
+    /// <summary>
+    ///     <para>
+    ///         Handles save-name input changes in the save modal.
+    ///     </para>
+    /// </summary>
     private void OnSaveNameChanged(ChangeEventArgs args)
     {
         SaveName = args.Value?.ToString() ?? string.Empty;
     }
 
+    /// <summary>
+    ///     <para>
+    ///         Creates a brand-new empty sheet and resets viewport state.
+    ///     </para>
+    /// </summary>
     private void NewDocument()
     {
         _sheet = new SpreadsheetDoc();
@@ -736,17 +1228,32 @@ public partial class SpreadsheetPage : IAsyncDisposable
         Notify("New document");
     }
 
+    /// <summary>
+    ///     <para>
+    ///         Marks the current document as having unsaved changes.
+    ///     </para>
+    /// </summary>
     private void MarkUnsaved()
     {
         IsSaved = false;
     }
 
+    /// <summary>
+    ///     <para>
+    ///         Marks the current document as saved and updates save timestamp.
+    ///     </para>
+    /// </summary>
     private void MarkSaved()
     {
         IsSaved = true;
         LastSavedAt = DateTimeOffset.UtcNow;
     }
 
+    /// <summary>
+    ///     <para>
+    ///         Serializes the current sheet to JSON text.
+    ///     </para>
+    /// </summary>
     private string ExportSheetJson()
     {
         var tempPath = Path.Combine(Path.GetTempPath(), $"bmos-{Guid.NewGuid():N}.json");
@@ -764,6 +1271,11 @@ public partial class SpreadsheetPage : IAsyncDisposable
         }
     }
 
+    /// <summary>
+    ///     <para>
+    ///         Loads a sheet from JSON text and applies document-level UI state updates.
+    ///     </para>
+    /// </summary>
     private void LoadSpreadsheetFromJson(string json, string documentName)
     {
         var tempPath = Path.Combine(Path.GetTempPath(), $"bmos-load-{Guid.NewGuid():N}.json");
@@ -786,6 +1298,11 @@ public partial class SpreadsheetPage : IAsyncDisposable
         }
     }
 
+    /// <summary>
+    ///     <para>
+    ///         Ensures a file name ends with the <c>.json</c> extension.
+    ///     </para>
+    /// </summary>
     private static string EnsureJsonFileName(string name)
     {
         var normalized = string.IsNullOrWhiteSpace(name) ? "spreadsheet" : name.Trim();
@@ -794,6 +1311,11 @@ public partial class SpreadsheetPage : IAsyncDisposable
             : normalized + ".json";
     }
 
+    /// <summary>
+    ///     <para>
+    ///         Refreshes available local-storage documents for the load modal.
+    ///     </para>
+    /// </summary>
     private async Task RefreshLocalDocumentsAsync()
     {
         if (_jsModule is null)
@@ -825,6 +1347,11 @@ public partial class SpreadsheetPage : IAsyncDisposable
         await InvokeAsync(StateHasChanged);
     }
 
+    /// <summary>
+    ///     <para>
+    ///         Displays a transient toast-style notification message.
+    ///     </para>
+    /// </summary>
     private async void Notify(string message)
     {
         _notificationCts?.Cancel();
@@ -847,6 +1374,11 @@ public partial class SpreadsheetPage : IAsyncDisposable
         }
     }
 
+    /// <summary>
+    ///     <para>
+    ///         Loads one of the built-in sample templates into a fresh sheet.
+    ///     </para>
+    /// </summary>
     private void LoadTemplate(SampleTemplateKey templateKey, string documentName, bool markSaved)
     {
         var nextSheet = new SpreadsheetDoc();
@@ -867,6 +1399,11 @@ public partial class SpreadsheetPage : IAsyncDisposable
         }
     }
 
+    /// <summary>
+    ///     <para>
+    ///         Resets selection, find state, edit state, and menus to default viewport values.
+    ///     </para>
+    /// </summary>
     private void ResetViewportState()
     {
         _findMatches.Clear();
@@ -879,6 +1416,11 @@ public partial class SpreadsheetPage : IAsyncDisposable
         SyncFormulaInputWithSelection();
     }
 
+    /// <summary>
+    ///     <para>
+    ///         Dispatches template population based on the selected template key.
+    ///     </para>
+    /// </summary>
     private void PopulateTemplate(SpreadsheetDoc sheet, SampleTemplateKey templateKey)
     {
         switch (templateKey)
@@ -898,6 +1440,11 @@ public partial class SpreadsheetPage : IAsyncDisposable
         }
     }
 
+    /// <summary>
+    ///     <para>
+    ///         Populates the Q3 variance report sample.
+    ///     </para>
+    /// </summary>
     private void PopulateQ3VarianceReport(SpreadsheetDoc sheet)
     {
         SetCellNoDirty(sheet, 0, 0, "MONTH");
@@ -931,6 +1478,11 @@ public partial class SpreadsheetPage : IAsyncDisposable
         SetCellNoDirty(sheet, 9, 2, "=(C2+C3+C4+C5+C6+C7)/6");
     }
 
+    /// <summary>
+    ///     <para>
+    ///         Populates the headcount model sample.
+    ///     </para>
+    /// </summary>
     private void PopulateHeadcountModel(SpreadsheetDoc sheet)
     {
         SetCellNoDirty(sheet, 0, 0, "ROLE");
@@ -956,6 +1508,11 @@ public partial class SpreadsheetPage : IAsyncDisposable
         SetCellNoDirty(sheet, 7, 3, "=D2+D3+D4+D5+D6");
     }
 
+    /// <summary>
+    ///     <para>
+    ///         Populates the budget consolidation sample.
+    ///     </para>
+    /// </summary>
     private void PopulateBudgetConsolidation(SpreadsheetDoc sheet)
     {
         SetCellNoDirty(sheet, 0, 0, "TEAM");
@@ -990,6 +1547,11 @@ public partial class SpreadsheetPage : IAsyncDisposable
         SetCellNoDirty(sheet, 6, 5, "=F2+F3+F4+F5");
     }
 
+    /// <summary>
+    ///     <para>
+    ///         Populates the actuals-vs-plan sample.
+    ///     </para>
+    /// </summary>
     private void PopulateActualsVsPlan(SpreadsheetDoc sheet)
     {
         SetCellNoDirty(sheet, 0, 0, "METRIC");
@@ -1013,6 +1575,11 @@ public partial class SpreadsheetPage : IAsyncDisposable
         }
     }
 
+    /// <summary>
+    ///     <para>
+    ///         Writes a sample cell value while suppressing template-time errors.
+    ///     </para>
+    /// </summary>
     private static void SetCellNoDirty(SpreadsheetDoc sheet, int row, int col, string value)
     {
         try
@@ -1025,6 +1592,11 @@ public partial class SpreadsheetPage : IAsyncDisposable
         }
     }
 
+    /// <summary>
+    ///     <para>
+    ///         Identifies which modal dialog is currently being opened or closed.
+    ///     </para>
+    /// </summary>
     private enum ModalKind
     {
         Save,
@@ -1032,12 +1604,22 @@ public partial class SpreadsheetPage : IAsyncDisposable
         About
     }
 
+    /// <summary>
+    ///     <para>
+    ///         Save target selected by the user in the save modal.
+    ///     </para>
+    /// </summary>
     private enum SaveDestination
     {
         LocalStorage,
         Download
     }
 
+    /// <summary>
+    ///     <para>
+    ///         Keys for built-in sample spreadsheet templates.
+    ///     </para>
+    /// </summary>
     private enum SampleTemplateKey
     {
         Q3VarianceReport,
@@ -1046,5 +1628,13 @@ public partial class SpreadsheetPage : IAsyncDisposable
         ActualsVsPlan
     }
 
+    /// <summary>
+    ///     <para>
+    ///         Metadata for a sample document shown in the open menu.
+    ///     </para>
+    /// </summary>
+    /// <param name="Name">Display name of the sample document.</param>
+    /// <param name="DateText">Display date text for recency.</param>
+    /// <param name="TemplateKey">Template identifier used for population.</param>
     private sealed record SampleDocument(string Name, string DateText, SampleTemplateKey TemplateKey);
 }
