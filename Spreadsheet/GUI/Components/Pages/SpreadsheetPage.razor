@@ -5,7 +5,7 @@
 
 <PageTitle>BMOS - BMO Spreadsheeting</PageTitle>
 
-<div class="bmos-shell" tabindex="0" @onclick="CloseMenus" @onmouseup="StopResizeAI">
+<div class="bmos-shell" tabindex="0" @onclick="CloseMenus">
     <SpreadsheetTitleBar
         DocumentName="@DocumentName"
         IsSaved="@IsSaved"
@@ -112,7 +112,6 @@
             AITyping="@AITyping"
             AIInput="@AIInput"
             CanSendAI="@CanSendAI"
-            OnStartResizeAI="StartResizeAI"
             OnToggleAI="ToggleAI"
             OnAIInputChanged="OnAIInputChanged"
             OnAIKeyDown="HandleAIKeyDown"
@@ -161,11 +160,6 @@
     <SpreadsheetAboutModal
         IsOpen="@AboutModalOpen"
         OnClose="(() => CloseModal(ModalKind.About))" />
-
-    @if (ResizingAI)
-    {
-        <div class="resize-capture" @onmousemove="ResizeAIPanel" @onmouseup="StopResizeAI" @onmouseleave="StopResizeAI"></div>
-    }
 
     <div id="notif" class="@(NotificationVisible ? "show" : string.Empty)">@NotificationMessage</div>
 </div>

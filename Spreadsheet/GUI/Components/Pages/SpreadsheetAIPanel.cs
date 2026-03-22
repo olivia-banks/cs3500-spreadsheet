@@ -21,10 +21,8 @@ public partial class SpreadsheetPage
 
     private bool AIHidden { get; set; }
     private bool AITyping { get; set; }
-    private bool ResizingAI { get; set; }
 
     private double AIPanelWidth { get; set; } = 300;
-    private double LastResizeClientX { get; set; }
 
     private string AIInput { get; set; } = string.Empty;
 
@@ -33,40 +31,6 @@ public partial class SpreadsheetPage
     private IReadOnlyList<ChatMessage> AIMessages => _aiMessages;
 
     private void ToggleAI() => AIHidden = !AIHidden;
-
-    private void StartResizeAI(MouseEventArgs args)
-    {
-        if (AIHidden)
-        {
-            return;
-        }
-
-        ResizingAI = true;
-        LastResizeClientX = args.ClientX;
-    }
-
-    private void ResizeAIPanel(MouseEventArgs args)
-    {
-        if (!ResizingAI)
-        {
-            return;
-        }
-
-        if (args.Buttons == 0)
-        {
-            StopResizeAI();
-            return;
-        }
-
-        var delta = LastResizeClientX - args.ClientX;
-        LastResizeClientX = args.ClientX;
-        AIPanelWidth = Math.Clamp(AIPanelWidth + delta, 240, 560);
-    }
-
-    private void StopResizeAI()
-    {
-        ResizingAI = false;
-    }
 
     private void OpenAIHelp()
     {
