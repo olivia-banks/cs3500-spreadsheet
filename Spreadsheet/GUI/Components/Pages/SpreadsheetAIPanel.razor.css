@@ -9,21 +9,6 @@
     overflow: hidden;
 }
 
-.ai-resize-handle {
-    position: absolute;
-    left: -4px;
-    top: 0;
-    bottom: 0;
-    width: 8px;
-    cursor: col-resize;
-    background: transparent;
-    z-index: 45;
-}
-
-.ai-resize-handle.hidden {
-    display: none;
-}
-
 #ai-panel.hidden {
     width: 0;
     min-width: 0;
