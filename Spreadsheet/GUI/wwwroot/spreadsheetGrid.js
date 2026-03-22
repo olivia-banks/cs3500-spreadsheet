@@ -5,6 +5,7 @@
 let dotNetHelper = null;
 let aiInputKeydownHandler = null;
 let aiInputElement = null;
+const LOCAL_SHEETS_KEY = 'bmos.savedSheets';
 
 export function initialize(dotNetRef) {
     dotNetHelper = dotNetRef;
@@ -87,6 +88,62 @@ function bindAiInputEnterGuard() {
 
     aiInputElement = input;
     aiInputElement.addEventListener('keydown', aiInputKeydownHandler);
+}
+
+function readSavedSheets() {
+    try {
+        const raw = localStorage.getItem(LOCAL_SHEETS_KEY);
+        if (!raw) return {};
+        const parsed = JSON.parse(raw);
+        return parsed && typeof parsed === 'object' ? parsed : {};
+    } catch {
+        return {};
+    }
+}
+
+function writeSavedSheets(sheets) {
+    localStorage.setItem(LOCAL_SHEETS_KEY, JSON.stringify(sheets));
+}
+
+export function saveSheetToLocal(name, jsonText) {
+    const normalizedName = (name || 'Untitled').trim() || 'Untitled';
+    const sheets = readSavedSheets();
+    sheets[normalizedName] = {
+        json: jsonText,
+        savedAt: new Date().toISOString()
+    };
+    writeSavedSheets(sheets);
+}
+
+export function loadSheetFromLocal(name) {
+    const sheets = readSavedSheets();
+    return sheets[name]?.json ?? null;
+}
+
+export function deleteSheetFromLocal(name) {
+    const sheets = readSavedSheets();
+    delete sheets[name];
+    writeSavedSheets(sheets);
+}
+
+export function listSheetsFromLocal() {
+    const sheets = readSavedSheets();
+    return Object.entries(sheets).map(([name, entry]) => ({
+        name,
+        savedAt: entry.savedAt || ''
+    }));
+}
+
+export function downloadSheetFile(fileName, jsonText) {
+    const blob = new Blob([jsonText], { type: 'application/json;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const anchor = document.createElement('a');
+    anchor.href = url;
+    anchor.download = fileName;
+    document.body.appendChild(anchor);
+    anchor.click();
+    document.body.removeChild(anchor);
+    URL.revokeObjectURL(url);
 }
 
 function onDocKeyDown(e) {
