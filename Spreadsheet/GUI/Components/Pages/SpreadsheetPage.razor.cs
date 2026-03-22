@@ -43,7 +43,7 @@ public partial class SpreadsheetPage : IAsyncDisposable
     ///         Default name assigned to a newly initialized document.
     ///     </para>
     /// </summary>
-    private const string DefaultDocumentName = "Q3 Variance Report";
+    private const string DefaultDocumentName = "Untitled";
 
     /// <summary>
     ///     <para>
@@ -173,6 +173,13 @@ public partial class SpreadsheetPage : IAsyncDisposable
 
     /// <summary>
     ///     <para>
+    ///         Whether the demo modal is currently open.
+    ///     </para>
+    /// </summary>
+    private bool DemoModalOpen { get; set; }
+
+    /// <summary>
+    ///     <para>
     ///         Whether the about modal is currently open.
     ///     </para>
     /// </summary>
@@ -264,10 +271,10 @@ public partial class SpreadsheetPage : IAsyncDisposable
 
     /// <summary>
     ///     <para>
-    ///         Sample document name pending confirmation/open.
+    ///         Currently selected built-in sample document for demo loading.
     ///     </para>
     /// </summary>
-    private string? PendingOpenDocument { get; set; }
+    private string? SelectedDemoDocumentName { get; set; }
 
     /// <summary>
     ///     <para>
@@ -327,6 +334,15 @@ public partial class SpreadsheetPage : IAsyncDisposable
 
     /// <summary>
     ///     <para>
+    ///         Sample-document row data shown in the demo modal selector.
+    ///     </para>
+    /// </summary>
+    private IReadOnlyList<FileRowOption> SampleDocumentRows => _sampleDocuments
+        .Select(sample => new FileRowOption(sample.Name, sample.DateText))
+        .ToList();
+
+    /// <summary>
+    ///     <para>
     ///         Local documents discovered from browser local storage.
     ///     </para>
     /// </summary>
@@ -376,12 +392,17 @@ public partial class SpreadsheetPage : IAsyncDisposable
 
     /// <summary>
     ///     <para>
-    ///         Initializes page state with the default sample template.
+    ///         Initializes page state with a new empty document.
     ///     </para>
     /// </summary>
     protected override void OnInitialized()
     {
-        LoadTemplate(SampleTemplateKey.Q3VarianceReport, DefaultDocumentName, markSaved: true);
+        _sheet = new SpreadsheetDoc();
+        DocumentName = DefaultDocumentName;
+        SaveName = DefaultDocumentName;
+        ResetViewportState();
+        IsSaved = true;
+        LastSavedAt = null;
     }
 
     /// <summary>
@@ -1005,6 +1026,7 @@ public partial class SpreadsheetPage : IAsyncDisposable
         CloseMenus();
         SaveModalOpen = kind == ModalKind.Save;
         LoadModalOpen = kind == ModalKind.Load;
+        DemoModalOpen = kind == ModalKind.Demo;
         AboutModalOpen = kind == ModalKind.About;
         if (kind == ModalKind.Save)
         {
@@ -1014,6 +1036,11 @@ public partial class SpreadsheetPage : IAsyncDisposable
         if (kind == ModalKind.Load)
         {
             _ = RefreshLocalDocumentsAsync();
+        }
+
+        if (kind == ModalKind.Demo)
+        {
+            SelectedDemoDocumentName ??= _sampleDocuments.FirstOrDefault()?.Name;
         }
     }
 
@@ -1031,6 +1058,10 @@ public partial class SpreadsheetPage : IAsyncDisposable
         else if (kind == ModalKind.Load)
         {
             LoadModalOpen = false;
+        }
+        else if (kind == ModalKind.Demo)
+        {
+            DemoModalOpen = false;
         }
         else
         {
@@ -1085,12 +1116,37 @@ public partial class SpreadsheetPage : IAsyncDisposable
 
     /// <summary>
     ///     <para>
-    ///         Stores the requested sample document name for a subsequent open action.
+    ///         Selects which sample document should be loaded from the demo modal.
     ///     </para>
     /// </summary>
-    private void OpenSample(string documentName)
+    private void SelectDemoDocument(string documentName)
     {
-        PendingOpenDocument = documentName;
+        SelectedDemoDocumentName = documentName;
+    }
+
+    /// <summary>
+    ///     <para>
+    ///         Loads the currently selected sample document from the demo modal.
+    ///     </para>
+    /// </summary>
+    private void ConfirmLoadDemo()
+    {
+        if (string.IsNullOrWhiteSpace(SelectedDemoDocumentName))
+        {
+            Notify("Select a demo document first.");
+            return;
+        }
+
+        var selectedSample = _sampleDocuments.FirstOrDefault(sample => sample.Name == SelectedDemoDocumentName);
+        if (selectedSample is null)
+        {
+            Notify("Could not load that demo document.");
+            return;
+        }
+
+        LoadTemplate(selectedSample.TemplateKey, selectedSample.Name, markSaved: true);
+        DemoModalOpen = false;
+        Notify($"Loaded demo '{selectedSample.Name}'");
     }
 
     /// <summary>
@@ -1228,7 +1284,7 @@ public partial class SpreadsheetPage : IAsyncDisposable
         _sheet = new SpreadsheetDoc();
         DocumentName = "Untitled";
         SaveName = DocumentName;
-        PendingOpenDocument = null;
+        SelectedDemoDocumentName = null;
         ResetViewportState();
         MarkUnsaved();
         Notify("New document");
@@ -1607,6 +1663,7 @@ public partial class SpreadsheetPage : IAsyncDisposable
     {
         Save,
         Load,
+        Demo,
         About
     }
 

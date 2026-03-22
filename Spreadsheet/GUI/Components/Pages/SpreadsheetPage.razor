@@ -29,6 +29,7 @@
 
     <SpreadsheetToolbar
         ZoomPercentText="@ZoomPercentText"
+        OnOpenDemo="() => OpenModal(ModalKind.Demo)"
         OnOpenSave="() => OpenModal(ModalKind.Save)"
         OnOpenLoad="() => OpenModal(ModalKind.Load)"
         OnClearSelectedCell="ClearSelectedCell"
@@ -160,6 +161,14 @@
     <SpreadsheetAboutModal
         IsOpen="@AboutModalOpen"
         OnClose="(() => CloseModal(ModalKind.About))" />
+
+    <SpreadsheetDemoModal
+        IsOpen="@DemoModalOpen"
+        SampleDocuments="@SampleDocumentRows"
+        SelectedSampleName="@SelectedDemoDocumentName"
+        OnSelectSample="SelectDemoDocument"
+        OnCancel="(() => CloseModal(ModalKind.Demo))"
+        OnLoadSelected="ConfirmLoadDemo" />
 
     <div id="notif" class="@(NotificationVisible ? "show" : string.Empty)">@NotificationMessage</div>
 </div>

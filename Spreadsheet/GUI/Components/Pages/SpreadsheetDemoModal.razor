@@ -1,0 +1,32 @@
+@namespace GUI.Components.Pages
+
+<div class="overlay @(IsOpen ? "open" : string.Empty)" @onclick="OnCancel">
+    <div class="modal-box" @onclick:stopPropagation="true">
+        <div class="modal-head">
+            <h2>Load Demo</h2>
+            <button class="icon-btn modal-close" @onclick="OnCancel">×</button>
+        </div>
+        <div class="modal-body">
+            <label class="modal-label">Choose a sample spreadsheet</label>
+            <SpreadsheetFileRowSelector
+                Rows="@SampleDocuments"
+                SelectedName="@SelectedSampleName"
+                EmptyText="No demo documents are available."
+                ShowDelete="false"
+                OnSelect="OnSelectSample" />
+        </div>
+        <div class="modal-foot">
+            <button class="btn" @onclick="OnCancel">Cancel</button>
+            <button class="btn primary" @onclick="OnLoadSelected">Load Demo</button>
+        </div>
+    </div>
+</div>
+
+@code {
+    [Parameter] public bool IsOpen { get; set; }
+    [Parameter] public IReadOnlyList<FileRowOption> SampleDocuments { get; set; } = [];
+    [Parameter] public string? SelectedSampleName { get; set; }
+    [Parameter] public EventCallback<string> OnSelectSample { get; set; }
+    [Parameter] public EventCallback OnCancel { get; set; }
+    [Parameter] public EventCallback OnLoadSelected { get; set; }
+}

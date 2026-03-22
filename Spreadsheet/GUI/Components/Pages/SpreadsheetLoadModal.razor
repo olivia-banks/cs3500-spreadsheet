@@ -8,27 +8,13 @@
         </div>
         <div class="modal-body">
             <label class="modal-label">Saved in local storage</label>
-            <div class="file-list">
-                @if (LocalDocuments.Count == 0)
-                {
-                    <div class="empty-local-docs">No locally saved spreadsheets yet.</div>
-                }
-                else
-                {
-                    @foreach (var file in LocalDocuments)
-                    {
-                        <div class="file-row @(SelectedLocalDocumentName == file.Name ? "selected" : string.Empty)" @onclick="(() => OnSelectLocalDocument.InvokeAsync(file.Name))">
-                            <span class="file-icon">[ ]</span>
-                            <span class="file-name">@file.Name</span>
-                            <span class="file-date">@file.SavedAtText</span>
-                            <button class="btn danger"
-                                    title="Delete local copy"
-                                    @onclick:stopPropagation="true"
-                                    @onclick="(() => OnDeleteLocalDocument.InvokeAsync(file.Name))">Delete</button>
-                        </div>
-                    }
-                }
-            </div>
+            <SpreadsheetFileRowSelector
+                Rows="@LocalDocumentRows"
+                SelectedName="@SelectedLocalDocumentName"
+                EmptyText="No locally saved spreadsheets yet."
+                ShowDelete="true"
+                OnSelect="OnSelectLocalDocument"
+                OnDelete="OnDeleteLocalDocument" />
 
             <label class="modal-label">Or load from a JSON file</label>
             <InputFile OnChange="OnUploadFile" accept=".json,application/json" />
@@ -49,4 +35,8 @@
     [Parameter] public EventCallback<InputFileChangeEventArgs> OnUploadFile { get; set; }
     [Parameter] public EventCallback OnCancel { get; set; }
     [Parameter] public EventCallback OnOpenSelected { get; set; }
+
+    private IReadOnlyList<FileRowOption> LocalDocumentRows => LocalDocuments
+        .Select(document => new FileRowOption(document.Name, document.SavedAtText))
+        .ToList();
 }

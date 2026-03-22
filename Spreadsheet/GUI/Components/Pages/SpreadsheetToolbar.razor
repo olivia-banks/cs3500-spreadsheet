@@ -1,6 +1,8 @@
 @namespace GUI.Components.Pages
 
 <div id="toolbar">
+    <button class="tb-btn" @onclick="OnOpenDemo">Demo</button>
+    <div class="bar-sep"></div>
     <button class="tb-btn" @onclick="OnOpenSave">Save</button>
     <button class="tb-btn" @onclick="OnOpenLoad">Open</button>
     <button class="tb-btn tb-btn-disabled" title="This feature isn't implemented yet." type="button" disabled>Export</button>
@@ -20,6 +22,7 @@
 
 @code {
     [Parameter] public string ZoomPercentText { get; set; } = string.Empty;
+    [Parameter] public EventCallback OnOpenDemo { get; set; }
     [Parameter] public EventCallback OnOpenSave { get; set; }
     [Parameter] public EventCallback OnOpenLoad { get; set; }
     [Parameter] public EventCallback OnClearSelectedCell { get; set; }
