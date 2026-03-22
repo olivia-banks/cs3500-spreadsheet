@@ -3,20 +3,33 @@
 <div class="overlay @(IsOpen ? "open" : string.Empty)" @onclick="OnClose">
     <div class="modal-box modal-about" @onclick:stopPropagation="true">
         <div class="modal-head">
-            <h2>BMOS Quick Start</h2>
+            <h2>About BMOS</h2>
             <button class="icon-btn modal-close" @onclick="OnClose">×</button>
         </div>
         <div class="modal-body">
-            <p class="about-lead">BMOS is a spreadsheet workspace for entering values and formulas quickly.</p>
-            <div class="feat-list">
-                <div class="feat-item"><div class="feat-dot"></div>Click any cell to select it.</div>
-                <div class="feat-item"><div class="feat-dot"></div>Double-click a cell or press Enter to edit in-place.</div>
-                <div class="feat-item"><div class="feat-dot"></div>Use the formula bar to edit the selected cell and press Enter to commit.</div>
-                <div class="feat-item"><div class="feat-dot"></div>Arrow keys and Tab move between cells.</div>
-                <div class="feat-item"><div class="feat-dot"></div>Delete clears the selected cell.</div>
-                <div class="feat-item"><div class="feat-dot"></div>Use Save in the title/menu/toolbar to mark the sheet as saved.</div>
-                <div class="feat-item"><div class="feat-dot"></div>Open the AI panel for formula guidance; drag its left edge to resize.</div>
-            </div>
+            <section class="about-section">
+                <h3 class="about-section-title">Quick Start</h3>
+                <p class="about-lead">BMOS is a spreadsheet workspace for entering values and formulas quickly.</p>
+                <div class="feat-list">
+                    <div class="feat-item"><div class="feat-dot"></div>Click any cell to select it.</div>
+                    <div class="feat-item"><div class="feat-dot"></div>Double-click a cell or press Enter to edit in-place.</div>
+                    <div class="feat-item"><div class="feat-dot"></div>Use the formula bar to edit the selected cell and press Enter to commit.</div>
+                    <div class="feat-item"><div class="feat-dot"></div>Arrow keys and Tab move between cells.</div>
+                    <div class="feat-item"><div class="feat-dot"></div>Delete clears the selected cell.</div>
+                    <div class="feat-item"><div class="feat-dot"></div>Use Save in the title/menu/toolbar to mark the sheet as saved.</div>
+                    <div class="feat-item"><div class="feat-dot"></div>Open the AI panel for formula guidance; drag its left edge to resize.</div>
+                </div>
+            </section>
+
+            <section class="about-section credits-section">
+                <h3 class="about-section-title">Credits</h3>
+                <p class="credits-authors">Authors: Olivia Banks and Jack Driggs</p>
+                <div class="feat-list">
+                    <div class="feat-item"><div class="feat-dot"></div>Styling adapted from Tailwind output.</div>
+                    <div class="feat-item"><div class="feat-dot"></div>Interface inspired by Google Sheets and Excel.</div>
+                    <div class="feat-item"><div class="feat-dot"></div>Demo sheets generated with Google Gemini.</div>
+                </div>
+            </section>
         </div>
         <div class="modal-foot">
             <button class="btn primary" @onclick="OnClose">Close</button>
