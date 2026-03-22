@@ -23,7 +23,7 @@ public partial class SpreadsheetPage
     /// </summary>
     private readonly List<ChatMessage> _aiMessages =
     [
-        new(false, "Hello! I can help with formula design, data structure questions, and spreadsheet logic. Select a cell and ask me anything.")
+        new(false, "Hello! BMO is here to help with your spreadsheet! BMO is good at formulas, data questions, and spreadsheet logic. Select a cell and ask BMO anything!")
     ];
 
     [Inject]
@@ -98,7 +98,7 @@ public partial class SpreadsheetPage
     private void OpenAIHelp()
     {
         AIHidden = false;
-        _aiMessages.Add(new ChatMessage(false, "I can help with:\n- Formula syntax and structure\n- Data layout advice\n- Spreadsheet concepts\n\nWhat would you like to know?"));
+        _aiMessages.Add(new ChatMessage(false, "BMO can help with formula syntax, data layout advice, and spreadsheet concepts! What would you like to know?"));
         CloseMenus();
     }
 
