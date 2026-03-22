@@ -556,7 +556,7 @@ public partial class SpreadsheetPage : IAsyncDisposable
             return value switch
             {
                 string s => s,
-                double d => d.ToString(CultureInfo.InvariantCulture),
+                double d => d.ToString("#,##0.########", CultureInfo.CurrentCulture),
                 FormulaError fe => fe.Reason,
                 _ => string.Empty
             };
