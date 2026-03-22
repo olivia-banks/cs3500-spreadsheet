@@ -8,6 +8,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using CircularException = Spreadsheet.CircularException;
 using FormulaError = Formula.FormulaError;
+using FormulaFormatException = Formula.FormulaFormatException;
 using Microsoft.AspNetCore.Components;
 using Microsoft.AspNetCore.Components.Forms;
 using Microsoft.AspNetCore.Components.Web;
@@ -539,9 +540,9 @@ public partial class SpreadsheetPage : IAsyncDisposable
                 _ => string.Empty
             };
         }
-        catch
+        catch (Exception ex)
         {
-            return string.Empty;
+            return string.IsNullOrWhiteSpace(ex.Message) ? "#ERROR" : $"#ERROR: {ex.Message}";
         }
     }
 
@@ -664,9 +665,14 @@ public partial class SpreadsheetPage : IAsyncDisposable
             Notify("Circular dependency detected");
             return;
         }
-        catch (Exception)
+        catch (FormulaFormatException ex)
         {
-            Notify("Invalid formula");
+            Notify(string.IsNullOrWhiteSpace(ex.Message) ? "Invalid formula" : ex.Message);
+            return;
+        }
+        catch (Exception ex)
+        {
+            Notify(string.IsNullOrWhiteSpace(ex.Message) ? "Invalid formula" : ex.Message);
             return;
         }
 
