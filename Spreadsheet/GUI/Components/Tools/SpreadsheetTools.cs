@@ -15,21 +15,27 @@ using Formula;
 using Spreadsheet;
 
 /// <summary>
-/// Provides a set of tools that allow an AI model to interact with a <see cref="Spreadsheet"/> instance.
+///     <para>
+///         Provides a set of tools that allow an AI model to interact with a <see cref="Spreadsheet"/> instance.
+///     </para>
 /// </summary>
 /// <remarks>
-/// This class is designed to be used with <see cref="Microsoft.Extensions.AI.AIFunctionFactory"/> 
-/// to expose spreadsheet capabilities to an LLM.
+///     This class is designed to be used with <see cref="Microsoft.Extensions.AI.AIFunctionFactory"/>
+///     to expose spreadsheet capabilities to an LLM.
 /// </remarks>
 /// <param name="sheet">The spreadsheet instance this toolset will operate on.</param>
 public class SpreadsheetTools(Spreadsheet sheet)
 {
     /// <summary>
-    /// Updates the content of a specific cell in the spreadsheet.
+    ///     <para>
+    ///         Updates the content of a specific cell in the spreadsheet.
+    ///     </para>
     /// </summary>
     /// <param name="cellName">The cell coordinate (e.g., "A1", "B10").</param>
     /// <param name="value">The new content or formula to place in the cell.</param>
-    /// <returns>A status message indicating the operation was successful.</returns>
+    /// <returns>
+    ///     A status message indicating the operation was successful.
+    /// </returns>
     [Description("Sets the contents of a spreadsheet cell.")]
     public string SetCellContent(string cellName, string value)
     {
@@ -38,11 +44,15 @@ public class SpreadsheetTools(Spreadsheet sheet)
     }
     
     /// <summary>
-    /// Gets a cells contents for the user, so that if a cell has a formula
-    /// the user can see the formula and how it equated to the displayed value
+    ///     <para>
+    ///         Gets a cells contents for the user, so that if a cell has a formula
+    ///         the user can see the formula and how it equated to the displayed value.
+    ///     </para>
     /// </summary>
     /// <param name="cellName"></param>
-    /// <returns></returns>
+    /// <returns>
+    ///     The user-facing contents of the requested cell.
+    /// </returns>
     [Description("Gets the contents of a spreadsheet cell and displays it the user.")]
     public string GetCellContentInfo(string cellName)
     {
@@ -50,11 +60,15 @@ public class SpreadsheetTools(Spreadsheet sheet)
     }
     
     /// <summary>
-    /// Gets all the names of non-empty cells for the user, so they can keep track
-    /// of what they have put into the spreadsheet
+    ///     <para>
+    ///         Gets all the names of non-empty cells for the user, so they can keep track
+    ///         of what they have put into the spreadsheet.
+    ///     </para>
     /// </summary>
     /// <param name="cellName"></param>
-    /// <returns></returns>
+    /// <returns>
+    ///     A comma-separated list of non-empty cells, or a message indicating the sheet is empty.
+    /// </returns>
     [Description("Gets the names of all non-empty spreadsheet cells.")]
     public string GetActiveCells()
     {
@@ -65,11 +79,17 @@ public class SpreadsheetTools(Spreadsheet sheet)
     }
 
     /// <summary>
-    /// Gets the evaluated value of a spreadsheet cell as a string.
-    /// For formula cells, returns the computed result. For text/number cells, returns the value.
+    ///     <para>
+    ///         Gets the evaluated value of a spreadsheet cell as a string.
+    ///     </para>
+    ///     <para>
+    ///         For formula cells, returns the computed result. For text/number cells, returns the value.
+    ///     </para>
     /// </summary>
     /// <param name="cellName">The cell coordinate (e.g., "A1").</param>
-    /// <returns>The evaluated value of the cell, or an error message if the cell could not be evaluated.</returns>
+    /// <returns>
+    ///     The evaluated value of the cell, or an error message if the cell could not be evaluated.
+    /// </returns>
     [Description("Gets the evaluated value of a spreadsheet cell.")]
     public string GetCellValue(string cellName)
     {
@@ -91,12 +111,18 @@ public class SpreadsheetTools(Spreadsheet sheet)
     }
 
     /// <summary>
-    /// Gets all cell values in a rectangular range (e.g., "A1:C5").
-    /// Returns a formatted string with each cell's value.
+    ///     <para>
+    ///         Gets all cell values in a rectangular range (e.g., "A1:C5").
+    ///     </para>
+    ///     <para>
+    ///         Returns a formatted string with each cell's value.
+    ///     </para>
     /// </summary>
     /// <param name="rangeStart">Starting cell (e.g., "A1").</param>
     /// <param name="rangeEnd">Ending cell (e.g., "C5").</param>
-    /// <returns>A formatted string containing all cell values in the range.</returns>
+    /// <returns>
+    ///     A formatted string containing all cell values in the range.
+    /// </returns>
     [Description("Gets all cell values in a rectangular range of cells (e.g., A1:C5), formatted as a plaintext grid.")]
     public string GetCellRange(string rangeStart, string rangeEnd)
     {
@@ -115,8 +141,10 @@ public class SpreadsheetTools(Spreadsheet sheet)
     }
 
     /// <summary>
-    /// Returns the entire populated area of the spreadsheet as a plaintext grid,
-    /// auto-detecting the bounding box of all non-empty cells.
+    ///     <para>
+    ///         Returns the entire populated area of the spreadsheet as a plaintext grid,
+    ///         auto-detecting the bounding box of all non-empty cells.
+    ///     </para>
     /// </summary>
     [Description("Returns the entire spreadsheet as a plaintext grid showing all non-empty cell values with row and column headers.")]
     public string GetSpreadsheetSnapshot()
@@ -131,10 +159,14 @@ public class SpreadsheetTools(Spreadsheet sheet)
     }
 
     /// <summary>
-    /// Gets the immediate dependencies of a cell (cells that this cell depends on in formulas).
+    ///     <para>
+    ///         Gets the immediate dependencies of a cell (cells that this cell depends on in formulas).
+    ///     </para>
     /// </summary>
     /// <param name="cellName">The cell name (e.g., "A1").</param>
-    /// <returns>A formatted list of cells that the given cell depends on.</returns>
+    /// <returns>
+    ///     A formatted list of cells that the given cell depends on.
+    /// </returns>
     [Description("Gets the cells that a given cell depends on (cells referenced in its formula).")]
     public string GetCellDependencies(string cellName)
     {
@@ -155,10 +187,14 @@ public class SpreadsheetTools(Spreadsheet sheet)
     }
 
     /// <summary>
-    /// Gets the immediate dependents of a cell (cells whose formulas reference this cell).
+    ///     <para>
+    ///         Gets the immediate dependents of a cell (cells whose formulas reference this cell).
+    ///     </para>
     /// </summary>
     /// <param name="cellName">The cell name (e.g., "A1").</param>
-    /// <returns>A formatted list of cells that depend on the given cell.</returns>
+    /// <returns>
+    ///     A formatted list of cells that depend on the given cell.
+    /// </returns>
     [Description("Gets the cells that depend on a given cell (cells whose formulas reference it).")]
     public string GetCellDependents(string cellName)
     {
@@ -179,7 +215,9 @@ public class SpreadsheetTools(Spreadsheet sheet)
     }
 
     /// <summary>
-    /// Formats a rectangular range of cells as a plaintext grid with column-letter headers and row-number labels.
+    ///     <para>
+    ///         Formats a rectangular range of cells as a plaintext grid with column-letter headers and row-number labels.
+    ///     </para>
     /// </summary>
     private string FormatGrid(int startCol, int startRow, int endCol, int endRow)
     {
@@ -215,7 +253,9 @@ public class SpreadsheetTools(Spreadsheet sheet)
     }
 
     /// <summary>
-    /// Helper method to parse column index from Excel cell notation (A=0, B=1, ..., Z=25).
+    ///     <para>
+    ///         Helper method to parse column index from Excel cell notation (A=0, B=1, ..., Z=25).
+    ///     </para>
     /// </summary>
     private static int ParseColumnIndex(string cellName)
     {
@@ -225,7 +265,9 @@ public class SpreadsheetTools(Spreadsheet sheet)
     }
 
     /// <summary>
-    /// Helper method to parse row index from Excel cell notation (1-based → 0-based, so row 1 = index 0).
+    ///     <para>
+    ///         Helper method to parse row index from Excel cell notation (1-based → 0-based, so row 1 = index 0).
+    ///     </para>
     /// </summary>
     private static int ParseRowIndex(string cellName)
     {

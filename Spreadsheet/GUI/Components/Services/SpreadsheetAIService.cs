@@ -14,7 +14,9 @@ using Microsoft.Extensions.AI;
 using Spreadsheet;
 
 /// <summary>
-/// Provides AI-driven interaction capabilities for spreadsheet manipulation.
+///     <para>
+///         Provides AI-driven interaction capabilities for spreadsheet manipulation.
+///     </para>
 /// </summary>
 public class SpreadsheetAIService
 {
@@ -38,28 +40,36 @@ Response style:
 """;
 
     /// <summary>
-    /// The client used to communicate with the chat service.
+    ///     <para>
+    ///         The client used to communicate with the chat service.
+    ///     </para>
     /// </summary>
     /// <remarks>
-    /// This field is marked as <c>readonly</c> to ensure that the client instance 
-    /// remains constant throughout the lifetime of this service, supporting 
-    /// thread-safety and preventing accidental reassignment.
+    ///     This field is marked as <c>readonly</c> to ensure that the client instance
+    ///     remains constant throughout the lifetime of this service, supporting
+    ///     thread-safety and preventing accidental reassignment.
     /// </remarks>
     private readonly IChatClient _chatClient;
     private readonly string _systemPrompt;
 
     /// <summary>
-    /// Gets the conversation history for the current session.
+    ///     <para>
+    ///         Gets the conversation history for the current session.
+    ///     </para>
     /// </summary>
     public List<ChatMessage> ChatHistory { get; } = new();
 
     /// <summary>
-    /// Gets a value indicating whether the service is currently processing an AI request.
+    ///     <para>
+    ///         Gets a value indicating whether the service is currently processing an AI request.
+    ///     </para>
     /// </summary>
     public bool IsProcessing { get; private set; }
 
     /// <summary>
-    /// Initializes a new instance of the <see cref="SpreadsheetAIService"/> class.
+    ///     <para>
+    ///         Initializes a new instance of the <see cref="SpreadsheetAIService"/> class.
+    ///     </para>
     /// </summary>
     /// <param name="chatClient">The underlying chat client to use for AI responses.</param>
     public SpreadsheetAIService(IChatClient chatClient)
@@ -72,11 +82,15 @@ Response style:
     }
 
     /// <summary>
-    /// Processes a natural language query and performs actions on the provided <see cref="Spreadsheet"/>.
+    ///     <para>
+    ///         Processes a natural language query and performs actions on the provided <see cref="Spreadsheet"/>.
+    ///     </para>
     /// </summary>
     /// <param name="input">The user's natural language request.</param>
     /// <param name="activeSheet">The spreadsheet instance to be manipulated by the AI.</param>
-    /// <returns>The assistant's response text.</returns>
+    /// <returns>
+    ///     The assistant's response text.
+    /// </returns>
     public async Task<string> ProcessQueryAsync(string input, Spreadsheet activeSheet)
     {
         if (string.IsNullOrWhiteSpace(input)) return string.Empty;
