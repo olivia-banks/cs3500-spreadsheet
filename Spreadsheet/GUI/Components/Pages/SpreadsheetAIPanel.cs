@@ -124,8 +124,7 @@ public partial class SpreadsheetPage
                 response = "I processed your request.";
             }
 
-            // Sync any cells the AI modified back to the UI and formula bar.
-            SyncFormulaInputWithSelection();
+            SyncUIWithSpreadsheet();
         }
         catch (Exception ex)
         {

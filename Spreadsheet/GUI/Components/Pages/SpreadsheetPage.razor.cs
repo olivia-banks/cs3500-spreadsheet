@@ -1,12 +1,15 @@
 using System;
 using System.Collections.Generic;
 using System.Globalization;
+using System.IO;
 using System.Linq;
+using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using CircularException = Spreadsheet.CircularException;
 using FormulaError = Formula.FormulaError;
 using Microsoft.AspNetCore.Components;
+using Microsoft.AspNetCore.Components.Forms;
 using Microsoft.AspNetCore.Components.Web;
 using Microsoft.JSInterop;
 using SpreadsheetDoc = Spreadsheet.Spreadsheet;
@@ -17,16 +20,20 @@ public partial class SpreadsheetPage : IAsyncDisposable
 {
     private const int Rows = 50;
     private const int Cols = 26;
+    private const string DefaultDocumentName = "Q3 Variance Report";
+    private const long MaxUploadBytes = 5 * 1024 * 1024;
+    private const int MaxFileReadBytes = 2 * 1024 * 1024;
 
     private SpreadsheetDoc _sheet = new();
     private readonly HashSet<string> _findMatches = new();
+    private readonly List<LocalDocument> _localDocuments = [];
 
     private readonly List<SampleDocument> _sampleDocuments =
     [
-        new("Q3 Variance Report", "Jul 14, 2025"),
-        new("Headcount Model FY25", "Jul 9, 2025"),
-        new("Budget Consolidation v4", "Jun 28, 2025"),
-        new("Actuals vs Plan - H1", "Jun 15, 2025")
+        new("Q3 Variance Report", "Jul 14, 2025", SampleTemplateKey.Q3VarianceReport),
+        new("Headcount Model FY25", "Jul 9, 2025", SampleTemplateKey.HeadcountModel),
+        new("Budget Consolidation v4", "Jun 28, 2025", SampleTemplateKey.BudgetConsolidation),
+        new("Actuals vs Plan - H1", "Jun 15, 2025", SampleTemplateKey.ActualsVsPlan)
     ];
 
     [Inject]
@@ -55,14 +62,17 @@ public partial class SpreadsheetPage : IAsyncDisposable
 
     private double Zoom { get; set; } = 1;
 
-    private string DocumentName { get; set; } = "Q3 Variance Report";
-    private string SaveName { get; set; } = "Q3 Variance Report";
+    private string DocumentName { get; set; } = DefaultDocumentName;
+    private string SaveName { get; set; } = DefaultDocumentName;
     private string FormulaInput { get; set; } = string.Empty;
     private string EditingValue { get; set; } = string.Empty;
     private string FindQuery { get; set; } = string.Empty;
     private string? OpenMenuName { get; set; }
     private string NotificationMessage { get; set; } = string.Empty;
     private string? PendingOpenDocument { get; set; }
+    private string? SelectedLocalDocumentName { get; set; }
+
+    private SaveDestination SelectedSaveDestination { get; set; } = SaveDestination.LocalStorage;
 
     private DateTimeOffset? LastSavedAt { get; set; }
 
@@ -71,6 +81,7 @@ public partial class SpreadsheetPage : IAsyncDisposable
     private string ZoomPercentText => $"{(int)Math.Round(Zoom * 100)}%";
     private string ZoomStyle => $"transform: scale({Zoom.ToString("0.0", CultureInfo.InvariantCulture)}); transform-origin: top left;";
     private IReadOnlyList<SampleDocument> SampleDocuments => _sampleDocuments;
+    private IReadOnlyList<LocalDocument> LocalDocuments => _localDocuments;
 
     private string FindCountText => string.IsNullOrWhiteSpace(FindQuery)
         ? string.Empty
@@ -106,8 +117,7 @@ public partial class SpreadsheetPage : IAsyncDisposable
 
     protected override void OnInitialized()
     {
-        Seed();
-        SyncFormulaInputWithSelection();
+        LoadTemplate(SampleTemplateKey.Q3VarianceReport, DefaultDocumentName, markSaved: true);
     }
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
@@ -118,6 +128,7 @@ public partial class SpreadsheetPage : IAsyncDisposable
             _jsModule = await JS.InvokeAsync<IJSObjectReference>("import", "./spreadsheetGrid.js");
             await _jsModule.InvokeVoidAsync("initialize", _dotNetRef);
             await _jsModule.InvokeVoidAsync("autoResizeAiInput");
+            await RefreshLocalDocumentsAsync();
         }
 
         if (_needsFocusEditInput && _jsModule is not null)
@@ -131,8 +142,23 @@ public partial class SpreadsheetPage : IAsyncDisposable
     {
         if (_jsModule is not null)
         {
-            try { await _jsModule.InvokeVoidAsync("cleanup"); } catch { }
-            await _jsModule.DisposeAsync();
+            try
+            {
+                await _jsModule.InvokeVoidAsync("cleanup");
+            }
+            catch
+            {
+                // Ignore cleanup failures during teardown.
+            }
+
+            try
+            {
+                await _jsModule.DisposeAsync();
+            }
+            catch
+            {
+                // Ignore JS disconnect/object disposal races during teardown.
+            }
         }
 
         _dotNetRef?.Dispose();
@@ -349,6 +375,35 @@ public partial class SpreadsheetPage : IAsyncDisposable
         }
     }
 
+    private void SyncUIWithSpreadsheet()
+    {
+        CancelEdit();
+
+        SelectedRow = Math.Clamp(SelectedRow, 0, Rows - 1);
+        SelectedCol = Math.Clamp(SelectedCol, 0, Cols - 1);
+
+        SyncFormulaInputWithSelection();
+
+        if (!string.IsNullOrWhiteSpace(FindQuery))
+        {
+            RefreshFindMatches();
+        }
+        else
+        {
+            _findMatches.Clear();
+        }
+
+        IsSaved = !_sheet.Changed;
+        if (IsSaved)
+        {
+            LastSavedAt ??= DateTimeOffset.UtcNow;
+        }
+        else
+        {
+            LastSavedAt = null;
+        }
+    }
+
     private async Task HandleEditKeyDown(KeyboardEventArgs args)
     {
         if (args.Key == "Enter")
@@ -507,6 +562,11 @@ public partial class SpreadsheetPage : IAsyncDisposable
         {
             SaveName = DocumentName;
         }
+
+        if (kind == ModalKind.Load)
+        {
+            _ = RefreshLocalDocumentsAsync();
+        }
     }
 
     private void CloseModal(ModalKind kind)
@@ -525,12 +585,44 @@ public partial class SpreadsheetPage : IAsyncDisposable
         }
     }
 
-    private void ConfirmSave()
+    private async Task ConfirmSaveAsync()
     {
         DocumentName = string.IsNullOrWhiteSpace(SaveName) ? "Untitled" : SaveName.Trim();
+        SaveName = DocumentName;
+
+        try
+        {
+            var json = ExportSheetJson();
+
+            if (_jsModule is not null)
+            {
+                if (SelectedSaveDestination == SaveDestination.LocalStorage)
+                {
+                    await _jsModule.InvokeVoidAsync("saveSheetToLocal", SaveName, json);
+                    await RefreshLocalDocumentsAsync();
+                    Notify($"Saved '{SaveName}' to local storage");
+                }
+                else
+                {
+                    var fileName = EnsureJsonFileName(SaveName);
+                    await _jsModule.InvokeVoidAsync("downloadSheetFile", fileName, json);
+                    Notify($"Downloaded '{fileName}'");
+                }
+            }
+            else
+            {
+                Notify("Save is unavailable right now.");
+                return;
+            }
+        }
+        catch (Exception ex)
+        {
+            Notify($"Failed to save: {ex.Message}");
+            return;
+        }
+
         SaveModalOpen = false;
         MarkSaved();
-        Notify("Save dispatched");
     }
 
     private void OpenSample(string documentName)
@@ -538,16 +630,87 @@ public partial class SpreadsheetPage : IAsyncDisposable
         PendingOpenDocument = documentName;
     }
 
-    private void ConfirmOpen()
+    private async Task ConfirmOpenAsync()
     {
-        if (!string.IsNullOrWhiteSpace(PendingOpenDocument))
+        if (string.IsNullOrWhiteSpace(SelectedLocalDocumentName))
         {
-            DocumentName = PendingOpenDocument;
-            SaveName = PendingOpenDocument;
-            Notify("Opening...");
+            Notify("Select a local document first, or use file upload.");
+            return;
         }
 
-        LoadModalOpen = false;
+        try
+        {
+            if (_jsModule is null)
+            {
+                Notify("Open is unavailable right now.");
+                return;
+            }
+
+            var json = await _jsModule.InvokeAsync<string?>("loadSheetFromLocal", SelectedLocalDocumentName);
+            if (string.IsNullOrWhiteSpace(json))
+            {
+                Notify("Could not read that local document.");
+                return;
+            }
+
+            var loadedName = SelectedLocalDocumentName;
+            LoadSpreadsheetFromJson(json, loadedName);
+            Notify($"Loaded '{loadedName}'");
+            LoadModalOpen = false;
+        }
+        catch (Exception ex)
+        {
+            Notify($"Failed to open document: {ex.Message}");
+        }
+    }
+
+    private void SelectLocalDocument(string documentName)
+    {
+        SelectedLocalDocumentName = documentName;
+    }
+
+    private async Task DeleteLocalDocumentAsync(string documentName)
+    {
+        if (_jsModule is null)
+        {
+            return;
+        }
+
+        await _jsModule.InvokeVoidAsync("deleteSheetFromLocal", documentName);
+        if (SelectedLocalDocumentName == documentName)
+        {
+            SelectedLocalDocumentName = null;
+        }
+
+        await RefreshLocalDocumentsAsync();
+        Notify($"Deleted local copy of {documentName}");
+    }
+
+    private async Task OnUploadSpreadsheetFileAsync(InputFileChangeEventArgs args)
+    {
+        var file = args.File;
+        if (file is null)
+        {
+            return;
+        }
+
+        try
+        {
+            using var stream = file.OpenReadStream(MaxUploadBytes);
+            using var reader = new StreamReader(stream, Encoding.UTF8, true, MaxFileReadBytes, leaveOpen: false);
+            var json = await reader.ReadToEndAsync();
+
+            var fileNameWithoutExt = Path.GetFileNameWithoutExtension(file.Name);
+            var loadedName = string.IsNullOrWhiteSpace(fileNameWithoutExt) ? "Imported Sheet" : fileNameWithoutExt;
+
+            LoadSpreadsheetFromJson(json, loadedName);
+            LoadModalOpen = false;
+            Notify($"Loaded '{loadedName}' from file");
+        }
+        catch (Exception ex)
+        {
+            Notify($"Failed to load file: {ex.Message}");
+        }
     }
 
     private void OnDocumentNameChanged(ChangeEventArgs args)
@@ -565,9 +728,10 @@ public partial class SpreadsheetPage : IAsyncDisposable
     private void NewDocument()
     {
         _sheet = new SpreadsheetDoc();
-        _findMatches.Clear();
-        FindQuery = string.Empty;
-        SelectCell(0, 0);
+        DocumentName = "Untitled";
+        SaveName = DocumentName;
+        PendingOpenDocument = null;
+        ResetViewportState();
         MarkUnsaved();
         Notify("New document");
     }
@@ -581,6 +745,84 @@ public partial class SpreadsheetPage : IAsyncDisposable
     {
         IsSaved = true;
         LastSavedAt = DateTimeOffset.UtcNow;
+    }
+
+    private string ExportSheetJson()
+    {
+        var tempPath = Path.Combine(Path.GetTempPath(), $"bmos-{Guid.NewGuid():N}.json");
+        try
+        {
+            _sheet.Save(tempPath);
+            return File.ReadAllText(tempPath);
+        }
+        finally
+        {
+            if (File.Exists(tempPath))
+            {
+                File.Delete(tempPath);
+            }
+        }
+    }
+
+    private void LoadSpreadsheetFromJson(string json, string documentName)
+    {
+        var tempPath = Path.Combine(Path.GetTempPath(), $"bmos-load-{Guid.NewGuid():N}.json");
+        try
+        {
+            File.WriteAllText(tempPath, json);
+            _sheet = new SpreadsheetDoc(tempPath);
+            DocumentName = documentName;
+            SaveName = documentName;
+            ResetViewportState();
+            MarkSaved();
+            SyncUIWithSpreadsheet();
+        }
+        finally
+        {
+            if (File.Exists(tempPath))
+            {
+                File.Delete(tempPath);
+            }
+        }
+    }
+
+    private static string EnsureJsonFileName(string name)
+    {
+        var normalized = string.IsNullOrWhiteSpace(name) ? "spreadsheet" : name.Trim();
+        return normalized.EndsWith(".json", StringComparison.OrdinalIgnoreCase)
+            ? normalized
+            : normalized + ".json";
+    }
+
+    private async Task RefreshLocalDocumentsAsync()
+    {
+        if (_jsModule is null)
+        {
+            return;
+        }
+
+        List<LocalDocument> docs;
+        try
+        {
+            docs = await _jsModule.InvokeAsync<List<LocalDocument>>("listSheetsFromLocal");
+        }
+        catch (JSException)
+        {
+            // If the browser still has a stale JS module cached, don't crash the circuit.
+            _localDocuments.Clear();
+            SelectedLocalDocumentName = null;
+            return;
+        }
+
+        _localDocuments.Clear();
+        _localDocuments.AddRange(docs.OrderByDescending(d => d.SavedAt));
+
+        if (string.IsNullOrWhiteSpace(SelectedLocalDocumentName) || !_localDocuments.Any(d => d.Name == SelectedLocalDocumentName))
+        {
+            SelectedLocalDocumentName = _localDocuments.FirstOrDefault()?.Name;
+        }
+
+        await InvokeAsync(StateHasChanged);
     }
 
     private async void Notify(string message)
@@ -605,49 +847,181 @@ public partial class SpreadsheetPage : IAsyncDisposable
         }
     }
 
-    private void Seed()
+    private void LoadTemplate(SampleTemplateKey templateKey, string documentName, bool markSaved)
     {
-        SetCellNoDirty(0, 0, "MONTH");
-        SetCellNoDirty(0, 1, "REVENUE");
-        SetCellNoDirty(0, 2, "BUDGET");
-        SetCellNoDirty(0, 3, "VARIANCE");
-        SetCellNoDirty(0, 4, "VAR %");
+        var nextSheet = new SpreadsheetDoc();
+        PopulateTemplate(nextSheet, templateKey);
+
+        _sheet = nextSheet;
+        DocumentName = documentName;
+        SaveName = documentName;
+        ResetViewportState();
+
+        if (markSaved)
+        {
+            MarkSaved();
+        }
+        else
+        {
+            MarkUnsaved();
+        }
+    }
+
+    private void ResetViewportState()
+    {
+        _findMatches.Clear();
+        FindQuery = string.Empty;
+        FindVisible = false;
+        CancelEdit();
+        CloseMenus();
+        SelectedRow = 0;
+        SelectedCol = 0;
+        SyncFormulaInputWithSelection();
+    }
+
+    private void PopulateTemplate(SpreadsheetDoc sheet, SampleTemplateKey templateKey)
+    {
+        switch (templateKey)
+        {
+            case SampleTemplateKey.Q3VarianceReport:
+                PopulateQ3VarianceReport(sheet);
+                break;
+            case SampleTemplateKey.HeadcountModel:
+                PopulateHeadcountModel(sheet);
+                break;
+            case SampleTemplateKey.BudgetConsolidation:
+                PopulateBudgetConsolidation(sheet);
+                break;
+            case SampleTemplateKey.ActualsVsPlan:
+                PopulateActualsVsPlan(sheet);
+                break;
+        }
+    }
+
+    private void PopulateQ3VarianceReport(SpreadsheetDoc sheet)
+    {
+        SetCellNoDirty(sheet, 0, 0, "MONTH");
+        SetCellNoDirty(sheet, 0, 1, "REVENUE");
+        SetCellNoDirty(sheet, 0, 2, "BUDGET");
+        SetCellNoDirty(sheet, 0, 3, "VARIANCE");
+        SetCellNoDirty(sheet, 0, 4, "VAR %");
 
         var months = new[] { "Jan", "Feb", "Mar", "Apr", "May", "Jun" };
-        var revenue = new[] { 128400, 141200, 133800, 156700, 149000, 172300 };
-        var budget = new[] { 130000, 135000, 140000, 150000, 155000, 160000 };
+        var revenue = new[] { "128400", "141200", "133800", "156700", "149000", "172300" };
+        var budget = new[] { "130000", "135000", "140000", "150000", "155000", "160000" };
 
         for (var i = 0; i < months.Length; i++)
         {
-            SetCellNoDirty(i + 1, 0, months[i]);
-            SetCellNoDirty(i + 1, 1, revenue[i].ToString("N0", CultureInfo.InvariantCulture));
-            SetCellNoDirty(i + 1, 2, budget[i].ToString("N0", CultureInfo.InvariantCulture));
-            SetCellNoDirty(i + 1, 3, (revenue[i] - budget[i]).ToString("N0", CultureInfo.InvariantCulture));
-            SetCellNoDirty(i + 1, 4, $"={ColumnLabel(3)}{i + 2}/{ColumnLabel(2)}{i + 2}*100");
+            var row = i + 1;
+            SetCellNoDirty(sheet, row, 0, months[i]);
+            SetCellNoDirty(sheet, row, 1, revenue[i]);
+            SetCellNoDirty(sheet, row, 2, budget[i]);
+            SetCellNoDirty(sheet, row, 3, $"=B{row + 1}-C{row + 1}");
+            SetCellNoDirty(sheet, row, 4, $"=D{row + 1}/C{row + 1}*100");
         }
 
-        SetCellNoDirty(7, 0, "TOTAL");
-        SetCellNoDirty(7, 1, "=SUM(B2:B7)");
-        SetCellNoDirty(7, 2, "=SUM(C2:C7)");
-        SetCellNoDirty(7, 3, "=SUM(D2:D7)");
-        SetCellNoDirty(7, 4, "-");
+        SetCellNoDirty(sheet, 7, 0, "TOTAL");
+        SetCellNoDirty(sheet, 7, 1, "=B2+B3+B4+B5+B6+B7");
+        SetCellNoDirty(sheet, 7, 2, "=C2+C3+C4+C5+C6+C7");
+        SetCellNoDirty(sheet, 7, 3, "=D2+D3+D4+D5+D6+D7");
+        SetCellNoDirty(sheet, 7, 4, "=D8/C8*100");
 
-        SetCellNoDirty(9, 0, "AVERAGE");
-        SetCellNoDirty(9, 1, "=AVERAGE(B2:B7)");
-        SetCellNoDirty(9, 2, "=AVERAGE(C2:C7)");
-
-        MarkSaved();
+        SetCellNoDirty(sheet, 9, 0, "AVERAGE");
+        SetCellNoDirty(sheet, 9, 1, "=(B2+B3+B4+B5+B6+B7)/6");
+        SetCellNoDirty(sheet, 9, 2, "=(C2+C3+C4+C5+C6+C7)/6");
     }
 
-    private void SetCellNoDirty(int row, int col, string value)
+    private void PopulateHeadcountModel(SpreadsheetDoc sheet)
+    {
+        SetCellNoDirty(sheet, 0, 0, "ROLE");
+        SetCellNoDirty(sheet, 0, 1, "HEADCOUNT");
+        SetCellNoDirty(sheet, 0, 2, "AVG COST");
+        SetCellNoDirty(sheet, 0, 3, "ANNUAL COST");
+
+        var roles = new[] { "Engineering", "Product", "Design", "Sales", "Support" };
+        var headcount = new[] { "18", "6", "4", "10", "7" };
+        var avgCost = new[] { "142000", "136000", "128000", "118000", "91000" };
+
+        for (var i = 0; i < roles.Length; i++)
+        {
+            var row = i + 1;
+            SetCellNoDirty(sheet, row, 0, roles[i]);
+            SetCellNoDirty(sheet, row, 1, headcount[i]);
+            SetCellNoDirty(sheet, row, 2, avgCost[i]);
+            SetCellNoDirty(sheet, row, 3, $"=B{row + 1}*C{row + 1}");
+        }
+
+        SetCellNoDirty(sheet, 7, 0, "TOTAL");
+        SetCellNoDirty(sheet, 7, 1, "=B2+B3+B4+B5+B6");
+        SetCellNoDirty(sheet, 7, 3, "=D2+D3+D4+D5+D6");
+    }
+
+    private void PopulateBudgetConsolidation(SpreadsheetDoc sheet)
+    {
+        SetCellNoDirty(sheet, 0, 0, "TEAM");
+        SetCellNoDirty(sheet, 0, 1, "Q1");
+        SetCellNoDirty(sheet, 0, 2, "Q2");
+        SetCellNoDirty(sheet, 0, 3, "Q3");
+        SetCellNoDirty(sheet, 0, 4, "Q4");
+        SetCellNoDirty(sheet, 0, 5, "FY TOTAL");
+
+        var teams = new[] { "Platform", "Growth", "Data", "Infrastructure" };
+        var q1 = new[] { "820000", "540000", "410000", "630000" };
+        var q2 = new[] { "845000", "590000", "435000", "655000" };
+        var q3 = new[] { "870000", "620000", "460000", "670000" };
+        var q4 = new[] { "900000", "640000", "480000", "695000" };
+
+        for (var i = 0; i < teams.Length; i++)
+        {
+            var row = i + 1;
+            SetCellNoDirty(sheet, row, 0, teams[i]);
+            SetCellNoDirty(sheet, row, 1, q1[i]);
+            SetCellNoDirty(sheet, row, 2, q2[i]);
+            SetCellNoDirty(sheet, row, 3, q3[i]);
+            SetCellNoDirty(sheet, row, 4, q4[i]);
+            SetCellNoDirty(sheet, row, 5, $"=B{row + 1}+C{row + 1}+D{row + 1}+E{row + 1}");
+        }
+
+        SetCellNoDirty(sheet, 6, 0, "TOTAL");
+        SetCellNoDirty(sheet, 6, 1, "=B2+B3+B4+B5");
+        SetCellNoDirty(sheet, 6, 2, "=C2+C3+C4+C5");
+        SetCellNoDirty(sheet, 6, 3, "=D2+D3+D4+D5");
+        SetCellNoDirty(sheet, 6, 4, "=E2+E3+E4+E5");
+        SetCellNoDirty(sheet, 6, 5, "=F2+F3+F4+F5");
+    }
+
+    private void PopulateActualsVsPlan(SpreadsheetDoc sheet)
+    {
+        SetCellNoDirty(sheet, 0, 0, "METRIC");
+        SetCellNoDirty(sheet, 0, 1, "PLAN");
+        SetCellNoDirty(sheet, 0, 2, "ACTUAL");
+        SetCellNoDirty(sheet, 0, 3, "DELTA");
+        SetCellNoDirty(sheet, 0, 4, "DELTA %");
+
+        var metrics = new[] { "Pipeline", "Bookings", "Renewals", "Expansion", "Churn" };
+        var plan = new[] { "2500000", "1800000", "920000", "410000", "150000" };
+        var actual = new[] { "2640000", "1735000", "948000", "436000", "131000" };
+
+        for (var i = 0; i < metrics.Length; i++)
+        {
+            var row = i + 1;
+            SetCellNoDirty(sheet, row, 0, metrics[i]);
+            SetCellNoDirty(sheet, row, 1, plan[i]);
+            SetCellNoDirty(sheet, row, 2, actual[i]);
+            SetCellNoDirty(sheet, row, 3, $"=C{row + 1}-B{row + 1}");
+            SetCellNoDirty(sheet, row, 4, $"=D{row + 1}/B{row + 1}*100");
+        }
+    }
+
+    private static void SetCellNoDirty(SpreadsheetDoc sheet, int row, int col, string value)
     {
         try
         {
-            _sheet.SetContentsOfCell(ToSheetName(row, col), value);
+            sheet.SetContentsOfCell(ToSheetName(row, col), value);
         }
         catch
         {
-            // Ignore seed errors
+            // Ignore sample template errors so the UI can still render partial sample data.
         }
     }
 
@@ -658,5 +1032,19 @@ public partial class SpreadsheetPage : IAsyncDisposable
         About
     }
 
-    private sealed record SampleDocument(string Name, string DateText);
+    private enum SaveDestination
+    {
+        LocalStorage,
+        Download
+    }
+
+    private enum SampleTemplateKey
+    {
+        Q3VarianceReport,
+        HeadcountModel,
+        BudgetConsolidation,
+        ActualsVsPlan
+    }
+
+    private sealed record SampleDocument(string Name, string DateText, SampleTemplateKey TemplateKey);
 }
