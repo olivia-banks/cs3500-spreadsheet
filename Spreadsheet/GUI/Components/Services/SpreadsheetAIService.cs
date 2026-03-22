@@ -5,7 +5,9 @@
 
 namespace GUI.Components.Services;
 
+using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Threading.Tasks;
 using GUI.Components.Tools;
 using Microsoft.Extensions.AI;
@@ -99,6 +101,7 @@ Response style:
                     AIFunctionFactory.Create(tools.GetActiveCells),
                     AIFunctionFactory.Create(tools.GetCellValue),
                     AIFunctionFactory.Create(tools.GetCellRange),
+                    AIFunctionFactory.Create(tools.GetSpreadsheetSnapshot),
                     AIFunctionFactory.Create(tools.GetCellDependencies),
                     AIFunctionFactory.Create(tools.GetCellDependents)
                 ]
@@ -107,8 +110,11 @@ Response style:
             // Request response from AI; if it needs data, it will call the tools provided above
             var response = await _chatClient.GetResponseAsync(ChatHistory, options);
 
-            // Save the AI's response to the history and return its text
-            var botMessage = response.Messages.Count >= 3 ? response.Messages[2] : response.Messages[0];
+            // Find the last assistant message that has actual text
+            var botMessage = response.Messages
+                .LastOrDefault(m => m.Role == ChatRole.Assistant && !string.IsNullOrWhiteSpace(m.Text))
+                ?? response.Messages.Last();
+
             ChatHistory.Add(botMessage);
             return botMessage.Text ?? string.Empty;
         }

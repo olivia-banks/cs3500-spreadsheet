@@ -55,15 +55,13 @@ public class SpreadsheetTools(Spreadsheet sheet)
     /// </summary>
     /// <param name="cellName"></param>
     /// <returns></returns>
-    [Description("Gets the names of all non-empty spreadsheet cells and displays it the user.")]
+    [Description("Gets the names of all non-empty spreadsheet cells.")]
     public string GetActiveCells()
     {
-        StringBuilder allActiveCells = new StringBuilder();
-        foreach (string cellName in sheet.GetNamesOfAllNonemptyCells())
-        {
-            allActiveCells.Append(cellName);
-        }
-        return "Success, these are all the filled cells: " + allActiveCells.ToString();
+        var cells = sheet.GetNamesOfAllNonemptyCells().OrderBy(c => c).ToList();
+        if (cells.Count == 0)
+            return "The spreadsheet is empty.";
+        return "Non-empty cells: " + string.Join(", ", cells);
     }
 
     /// <summary>
@@ -99,44 +97,37 @@ public class SpreadsheetTools(Spreadsheet sheet)
     /// <param name="rangeStart">Starting cell (e.g., "A1").</param>
     /// <param name="rangeEnd">Ending cell (e.g., "C5").</param>
     /// <returns>A formatted string containing all cell values in the range.</returns>
-    [Description("Gets all cell values in a rectangular range of cells (e.g., A1:C5).")]
+    [Description("Gets all cell values in a rectangular range of cells (e.g., A1:C5), formatted as a plaintext grid.")]
     public string GetCellRange(string rangeStart, string rangeEnd)
     {
         try
         {
-            var results = new StringBuilder();
-            results.AppendLine($"Values in range {rangeStart}:{rangeEnd}:");
-
-            // Parse start and end cell names (e.g., "A1", "C5")
             var startCol = ParseColumnIndex(rangeStart);
             var startRow = ParseRowIndex(rangeStart);
             var endCol = ParseColumnIndex(rangeEnd);
             var endRow = ParseRowIndex(rangeEnd);
-
-            for (var r = startRow; r <= endRow; r++)
-            {
-                for (var c = startCol; c <= endCol; c++)
-                {
-                    var cellName = $"{(char)('A' + c)}{r + 1}";
-                    var value = sheet.GetCellValue(cellName);
-                    var valueStr = value switch
-                    {
-                        string s => s,
-                        double d => d.ToString(),
-                        FormulaError fe => $"Error: {fe.Reason}",
-                        _ => value.ToString()
-                    };
-                    results.Append($"{cellName}={valueStr} | ");
-                }
-                results.AppendLine();
-            }
-
-            return results.ToString();
+            return FormatGrid(startCol, startRow, endCol, endRow);
         }
         catch (Exception ex)
         {
             return $"Error reading range {rangeStart}:{rangeEnd}: {ex.Message}";
         }
+    }
+
+    /// <summary>
+    /// Returns the entire populated area of the spreadsheet as a plaintext grid,
+    /// auto-detecting the bounding box of all non-empty cells.
+    /// </summary>
+    [Description("Returns the entire spreadsheet as a plaintext grid showing all non-empty cell values with row and column headers.")]
+    public string GetSpreadsheetSnapshot()
+    {
+        var cells = sheet.GetNamesOfAllNonemptyCells().ToList();
+        if (cells.Count == 0)
+            return "The spreadsheet is empty.";
+
+        var cols = cells.Select(ParseColumnIndex);
+        var rows = cells.Select(ParseRowIndex);
+        return FormatGrid(cols.Min(), rows.Min(), cols.Max(), rows.Max());
     }
 
     /// <summary>
@@ -185,6 +176,42 @@ public class SpreadsheetTools(Spreadsheet sheet)
         {
             return $"Error getting dependents for {cellName}: {ex.Message}";
         }
+    }
+
+    /// <summary>
+    /// Formats a rectangular range of cells as a plaintext grid with column-letter headers and row-number labels.
+    /// </summary>
+    private string FormatGrid(int startCol, int startRow, int endCol, int endRow)
+    {
+        const int ColWidth = 11;
+        var sb = new StringBuilder();
+
+        // Header: leading row-number column, then column letters
+        sb.Append(string.Empty.PadRight(5));
+        for (var c = startCol; c <= endCol; c++)
+            sb.Append(((char)('A' + c)).ToString().PadRight(ColWidth));
+        sb.AppendLine();
+
+        for (var r = startRow; r <= endRow; r++)
+        {
+            sb.Append((r + 1).ToString().PadRight(5));
+            for (var c = startCol; c <= endCol; c++)
+            {
+                var cellName = $"{(char)('A' + c)}{r + 1}";
+                var raw = sheet.GetCellValue(cellName);
+                var display = raw switch
+                {
+                    string s => s,
+                    double d => d.ToString(),
+                    FormulaError fe => $"#ERR({fe.Reason})",
+                    _ => raw?.ToString() ?? string.Empty
+                };
+                sb.Append(display.PadRight(ColWidth));
+            }
+            sb.AppendLine();
+        }
+
+        return sb.ToString();
     }
 
     /// <summary>

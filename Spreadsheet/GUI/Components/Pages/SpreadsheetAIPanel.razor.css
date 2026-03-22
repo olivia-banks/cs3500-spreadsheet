@@ -59,20 +59,7 @@
 .ai-close {
     width: 24px;
     height: 24px;
-    border: none;
-    background: transparent;
-    border-radius: 4px;
-    cursor: pointer;
-    color: var(--text-2);
     font-size: 18px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    transition: background 0.1s;
-}
-
-.ai-close:hover {
-    background: var(--border);
 }
 
 #ai-msgs {

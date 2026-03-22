@@ -1,0 +1,142 @@
+/* Overlay & modal chrome */
+
+.overlay {
+    display: none;
+    position: fixed;
+    inset: 0;
+    z-index: 500;
+    background: var(--bmos-overlay);
+    align-items: center;
+    justify-content: center;
+}
+
+.overlay.open {
+    display: flex;
+}
+
+.modal-box {
+    background: var(--bmos-surface);
+    border-radius: 8px;
+    box-shadow: var(--bmos-shadow-lg);
+    width: 460px;
+    max-width: 92vw;
+    max-height: 82vh;
+    display: flex;
+    flex-direction: column;
+}
+
+.modal-head {
+    display: flex;
+    align-items: center;
+    padding: 16px 20px;
+    border-bottom: 1px solid var(--bmos-border);
+    gap: 10px;
+    flex-shrink: 0;
+}
+
+.modal-head h2 {
+    font-size: 16px;
+    font-weight: 600;
+    flex: 1;
+    margin: 0;
+}
+
+.modal-close {
+    width: 28px;
+    height: 28px;
+    font-size: 18px;
+}
+
+.modal-body {
+    padding: 20px;
+    overflow-y: auto;
+    flex: 1;
+    font-size: 13px;
+    color: var(--bmos-text-muted);
+    line-height: 1.6;
+}
+
+.modal-foot {
+    padding: 14px 20px;
+    border-top: 1px solid var(--bmos-border);
+    display: flex;
+    gap: 8px;
+    justify-content: flex-end;
+    flex-shrink: 0;
+}
+
+.modal-label {
+    font-size: 12px;
+    font-weight: 500;
+    color: var(--bmos-text-muted);
+    display: block;
+    margin-bottom: 6px;
+}
+
+/* Icon buttons. */
+
+.icon-btn {
+    border: none;
+    background: transparent;
+    border-radius: 4px;
+    cursor: pointer;
+    color: var(--bmos-text-muted);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: background 0.1s;
+}
+
+.icon-btn:hover {
+    background: var(--bmos-bg-header);
+}
+
+/* Seps. */
+
+.bar-sep {
+    width: 1px;
+    height: 20px;
+    background: var(--bmos-border);
+    margin: 0 4px;
+    flex-shrink: 0;
+}
+
+/* Buttons. */
+
+.btn {
+    font-family: inherit;
+    font-size: 13px;
+    font-weight: 500;
+    padding: 6px 16px;
+    border-radius: 4px;
+    border: 1px solid var(--bmos-border-dark);
+    cursor: pointer;
+    background: var(--bmos-surface);
+    color: var(--bmos-text);
+    transition: background 0.1s;
+}
+
+.btn:hover {
+    background: var(--bmos-bg-header);
+}
+
+.btn.primary {
+    background: var(--bmos-accent);
+    color: var(--bmos-text-on-accent);
+    border-color: var(--bmos-accent);
+}
+
+.btn.primary:hover {
+    background: var(--bmos-accent-hover);
+    border-color: var(--bmos-accent-hover);
+}
+
+.btn.danger {
+    background: var(--bmos-surface);
+    color: var(--bmos-danger);
+    border-color: var(--bmos-danger);
+}
+
+.btn.danger:hover {
+    background: var(--bmos-danger-light);
+}

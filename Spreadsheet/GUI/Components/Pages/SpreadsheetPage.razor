@@ -102,7 +102,7 @@
             <div id="find-bar" class="@(FindVisible ? string.Empty : "off")" @onclick:stopPropagation="true">
                 <input id="find-input" type="text" value="@FindQuery" @oninput="OnFindInput" placeholder="Find in sheet..." />
                 <span class="find-ct">@FindCountText</span>
-                <button class="find-x" @onclick="HideFind">×</button>
+                <button class="icon-btn find-x" @onclick="HideFind">×</button>
             </div>
         </div>
 

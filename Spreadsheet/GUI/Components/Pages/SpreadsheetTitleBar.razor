@@ -13,9 +13,9 @@
             <div class="badge-dot"></div>
             <span>@(IsSaved ? "Saved" : "Unsaved")</span>
         </div>
-        <div class="tb-divider"></div>
-        <button class="titlebar-btn primary" @onclick:stopPropagation="true" @onclick="OnToggleAI">AI Assistant</button>
-        <button class="titlebar-btn" @onclick:stopPropagation="true" @onclick="OnOpenAbout">About</button>
+        <div class="bar-sep"></div>
+        <button class="btn primary" @onclick:stopPropagation="true" @onclick="OnToggleAI">AI Assistant</button>
+        <button class="btn" @onclick:stopPropagation="true" @onclick="OnOpenAbout">About</button>
     </div>
 </div>
 

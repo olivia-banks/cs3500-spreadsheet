@@ -241,19 +241,7 @@ td.cell.found:not(.selected) {
 .find-x {
     width: 24px;
     height: 24px;
-    border: none;
-    background: transparent;
-    border-radius: 4px;
-    color: var(--text-2);
-    cursor: pointer;
     font-size: 16px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-}
-
-.find-x:hover {
-    background: var(--bg-header);
 }
 
 #notif {

@@ -33,6 +33,9 @@
     --bmos-toast-text: #ffffff;
     --bmos-disabled-bg: #c9ced6;
     --bmos-disabled-text: #eef1f5;
+    --bmos-danger: #c0392b;
+    --bmos-danger-hover: #a93226;
+    --bmos-danger-light: #fdecea;
 }
 
 html,

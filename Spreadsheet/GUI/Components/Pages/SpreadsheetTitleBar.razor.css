@@ -84,39 +84,7 @@
     gap: 8px;
 }
 
-#titlebar-right .tb-divider {
-    width: 1px;
-    height: 20px;
-    background: var(--border);
-}
 
-.titlebar-btn {
-    font-family: inherit;
-    font-size: 13px;
-    padding: 5px 14px;
-    border-radius: 4px;
-    border: 1px solid var(--border-dark);
-    cursor: pointer;
-    background: var(--surface);
-    color: var(--text-2);
-    transition: background 0.1s, color 0.1s;
-    white-space: nowrap;
-}
-
-.titlebar-btn:hover {
-    background: var(--bg-header);
-    color: var(--text);
-}
-
-.titlebar-btn.primary {
-    background: var(--accent);
-    color: var(--text-on-accent);
-    border-color: var(--accent);
-}
-
-.titlebar-btn.primary:hover {
-    background: var(--accent-hover);
-}
 
 @media (max-width: 900px) {
     #titlebar {

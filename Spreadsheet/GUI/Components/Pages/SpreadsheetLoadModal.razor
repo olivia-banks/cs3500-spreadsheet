@@ -4,7 +4,7 @@
     <div class="modal-box" @onclick:stopPropagation="true">
         <div class="modal-head">
             <h2>Open Document</h2>
-            <button class="modal-close" @onclick="OnCancel">×</button>
+            <button class="icon-btn modal-close" @onclick="OnCancel">×</button>
         </div>
         <div class="modal-body">
             <label class="modal-label">Saved in local storage</label>
@@ -21,7 +21,7 @@
                             <span class="file-icon">[ ]</span>
                             <span class="file-name">@file.Name</span>
                             <span class="file-date">@file.SavedAtText</span>
-                            <button class="file-delete-btn"
+                            <button class="btn danger"
                                     title="Delete local copy"
                                     @onclick:stopPropagation="true"
                                     @onclick="(() => OnDeleteLocalDocument.InvokeAsync(file.Name))">Delete</button>
