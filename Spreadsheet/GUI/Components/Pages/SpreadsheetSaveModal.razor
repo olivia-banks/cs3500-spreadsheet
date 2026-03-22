@@ -1,0 +1,41 @@
+@namespace GUI.Components.Pages
+
+<div class="overlay @(IsOpen ? "open" : string.Empty)" @onclick="OnCancel">
+    <div class="modal-box" @onclick:stopPropagation="true">
+        <div class="modal-head">
+            <h2>Save Document</h2>
+            <button class="modal-close" @onclick="OnCancel">×</button>
+        </div>
+        <div class="modal-body">
+            <label class="modal-label">Document name</label>
+            <input type="text" class="modal-input" value="@SaveName" @oninput="OnSaveNameChanged" />
+
+            <label class="modal-label">Save destination</label>
+            <div class="save-options">
+                <label class="save-option">
+                    <input type="radio" name="save-destination" checked="@SaveToLocalStorage" @onchange="OnSelectLocalStorage" />
+                    <span>Save to local storage</span>
+                </label>
+                <label class="save-option">
+                    <input type="radio" name="save-destination" checked="@(!SaveToLocalStorage)" @onchange="OnSelectDownload" />
+                    <span>Download JSON file</span>
+                </label>
+            </div>
+        </div>
+        <div class="modal-foot">
+            <button class="btn" @onclick="OnCancel">Cancel</button>
+            <button class="btn primary" @onclick="OnSave">Save</button>
+        </div>
+    </div>
+</div>
+
+@code {
+    [Parameter] public bool IsOpen { get; set; }
+    [Parameter] public string SaveName { get; set; } = string.Empty;
+    [Parameter] public bool SaveToLocalStorage { get; set; } = true;
+    [Parameter] public EventCallback<ChangeEventArgs> OnSaveNameChanged { get; set; }
+    [Parameter] public EventCallback OnSelectLocalStorage { get; set; }
+    [Parameter] public EventCallback OnSelectDownload { get; set; }
+    [Parameter] public EventCallback OnCancel { get; set; }
+    [Parameter] public EventCallback OnSave { get; set; }
+}

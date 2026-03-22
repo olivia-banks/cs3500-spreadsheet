@@ -1,0 +1,52 @@
+@namespace GUI.Components.Pages
+
+<div class="overlay @(IsOpen ? "open" : string.Empty)" @onclick="OnCancel">
+    <div class="modal-box" @onclick:stopPropagation="true">
+        <div class="modal-head">
+            <h2>Open Document</h2>
+            <button class="modal-close" @onclick="OnCancel">×</button>
+        </div>
+        <div class="modal-body">
+            <label class="modal-label">Saved in local storage</label>
+            <div class="file-list">
+                @if (LocalDocuments.Count == 0)
+                {
+                    <div class="empty-local-docs">No locally saved spreadsheets yet.</div>
+                }
+                else
+                {
+                    @foreach (var file in LocalDocuments)
+                    {
+                        <div class="file-row @(SelectedLocalDocumentName == file.Name ? "selected" : string.Empty)" @onclick="(() => OnSelectLocalDocument.InvokeAsync(file.Name))">
+                            <span class="file-icon">[ ]</span>
+                            <span class="file-name">@file.Name</span>
+                            <span class="file-date">@file.SavedAtText</span>
+                            <button class="file-delete-btn"
+                                    title="Delete local copy"
+                                    @onclick:stopPropagation="true"
+                                    @onclick="(() => OnDeleteLocalDocument.InvokeAsync(file.Name))">Delete</button>
+                        </div>
+                    }
+                }
+            </div>
+
+            <label class="modal-label">Or load from a JSON file</label>
+            <InputFile OnChange="OnUploadFile" accept=".json,application/json" />
+        </div>
+        <div class="modal-foot">
+            <button class="btn" @onclick="OnCancel">Cancel</button>
+            <button class="btn primary" @onclick="OnOpenSelected">Open Selected</button>
+        </div>
+    </div>
+</div>
+
+@code {
+    [Parameter] public bool IsOpen { get; set; }
+    [Parameter] public IReadOnlyList<LocalDocument> LocalDocuments { get; set; } = [];
+    [Parameter] public string? SelectedLocalDocumentName { get; set; }
+    [Parameter] public EventCallback<string> OnSelectLocalDocument { get; set; }
+    [Parameter] public EventCallback<string> OnDeleteLocalDocument { get; set; }
+    [Parameter] public EventCallback<InputFileChangeEventArgs> OnUploadFile { get; set; }
+    [Parameter] public EventCallback OnCancel { get; set; }
+    [Parameter] public EventCallback OnOpenSelected { get; set; }
+}
