@@ -17,7 +17,7 @@ using Spreadsheet;
 public class SpreadsheetAIService
 {
     private const string DefaultSystemPrompt = """
-You are BMOS AI, a spreadsheet assistant.
+You are Be More, a spreadsheet assistant.
 
 Goals:
 - Be correct, concise, and practical.
