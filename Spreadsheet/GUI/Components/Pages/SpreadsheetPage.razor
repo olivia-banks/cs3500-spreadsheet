@@ -138,71 +138,29 @@
         SelectedCellDisplay="@SelectedCellDisplay"
         LastSavedLabel="@LastSavedLabel" />
 
-    <div class="overlay @(SaveModalOpen ? "open" : string.Empty)" @onclick="(() => CloseModal(ModalKind.Save))">
-        <div class="modal-box" @onclick:stopPropagation="true">
-            <div class="modal-head">
-                <h2>Save Document</h2>
-                <button class="modal-close" @onclick="(() => CloseModal(ModalKind.Save))">×</button>
-            </div>
-            <div class="modal-body">
-                <label class="modal-label">Document name</label>
-                <input type="text" class="modal-input" value="@SaveName" @oninput="OnSaveNameChanged" />
-            </div>
-            <div class="modal-foot">
-                <button class="btn" @onclick="(() => CloseModal(ModalKind.Save))">Cancel</button>
-                <button class="btn primary" @onclick="ConfirmSave">Save</button>
-            </div>
-        </div>
-    </div>
+    <SpreadsheetSaveModal
+        IsOpen="@SaveModalOpen"
+        SaveName="@SaveName"
+        SaveToLocalStorage="@(SelectedSaveDestination == SaveDestination.LocalStorage)"
+        OnSaveNameChanged="OnSaveNameChanged"
+        OnSelectLocalStorage="(() => SelectedSaveDestination = SaveDestination.LocalStorage)"
+        OnSelectDownload="(() => SelectedSaveDestination = SaveDestination.Download)"
+        OnCancel="(() => CloseModal(ModalKind.Save))"
+        OnSave="ConfirmSaveAsync" />
 
-    <div class="overlay @(LoadModalOpen ? "open" : string.Empty)" @onclick="(() => CloseModal(ModalKind.Load))">
-        <div class="modal-box" @onclick:stopPropagation="true">
-            <div class="modal-head">
-                <h2>Open Document</h2>
-                <button class="modal-close" @onclick="(() => CloseModal(ModalKind.Load))">×</button>
-            </div>
-            <div class="modal-body">
-                <div class="file-list">
-                    @foreach (var file in SampleDocuments)
-                    {
-                        <div class="file-row" @onclick="(() => OpenSample(file.Name))">
-                            <span class="file-icon">[ ]</span>
-                            <span class="file-name">@file.Name</span>
-                            <span class="file-date">@file.DateText</span>
-                        </div>
-                    }
-                </div>
-            </div>
-            <div class="modal-foot">
-                <button class="btn" @onclick="(() => CloseModal(ModalKind.Load))">Cancel</button>
-                <button class="btn primary" @onclick="ConfirmOpen">Open</button>
-            </div>
-        </div>
-    </div>
+    <SpreadsheetLoadModal
+        IsOpen="@LoadModalOpen"
+        LocalDocuments="@LocalDocuments"
+        SelectedLocalDocumentName="@SelectedLocalDocumentName"
+        OnSelectLocalDocument="SelectLocalDocument"
+        OnDeleteLocalDocument="DeleteLocalDocumentAsync"
+        OnUploadFile="OnUploadSpreadsheetFileAsync"
+        OnCancel="(() => CloseModal(ModalKind.Load))"
+        OnOpenSelected="ConfirmOpenAsync" />
 
-    <div class="overlay @(AboutModalOpen ? "open" : string.Empty)" @onclick="(() => CloseModal(ModalKind.About))">
-        <div class="modal-box modal-about" @onclick:stopPropagation="true">
-            <div class="modal-head">
-                <h2>BMOS Quick Start</h2>
-                <button class="modal-close" @onclick="(() => CloseModal(ModalKind.About))">×</button>
-            </div>
-            <div class="modal-body">
-                <p class="about-lead">BMOS is a spreadsheet workspace for entering values and formulas quickly.</p>
-                <div class="feat-list">
-                    <div class="feat-item"><div class="feat-dot"></div>Click any cell to select it.</div>
-                    <div class="feat-item"><div class="feat-dot"></div>Double-click a cell or press Enter to edit in-place.</div>
-                    <div class="feat-item"><div class="feat-dot"></div>Use the formula bar to edit the selected cell and press Enter to commit.</div>
-                    <div class="feat-item"><div class="feat-dot"></div>Arrow keys and Tab move between cells.</div>
-                    <div class="feat-item"><div class="feat-dot"></div>Delete clears the selected cell.</div>
-                    <div class="feat-item"><div class="feat-dot"></div>Use Save in the title/menu/toolbar to mark the sheet as saved.</div>
-                    <div class="feat-item"><div class="feat-dot"></div>Open the AI panel for formula guidance; drag its left edge to resize.</div>
-                </div>
-            </div>
-            <div class="modal-foot">
-                <button class="btn primary" @onclick="(() => CloseModal(ModalKind.About))">Close</button>
-            </div>
-        </div>
-    </div>
+    <SpreadsheetAboutModal
+        IsOpen="@AboutModalOpen"
+        OnClose="(() => CloseModal(ModalKind.About))" />
 
     @if (ResizingAI)
     {
