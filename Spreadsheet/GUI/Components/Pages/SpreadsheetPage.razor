@@ -65,12 +65,7 @@
                                 {
                                     var localCol = col;
                                     var isSelected = row == SelectedRow && col == SelectedCol;
-                                    var isFound = IsFindMatch(row, col);
-                                    var className = isSelected
-                                        ? "cell selected"
-                                        : isFound
-                                            ? "cell found"
-                                            : "cell";
+                                    var className = isSelected ? "cell selected" : "cell";
 
                                     <td class="@className"
                                         @onclick:stopPropagation="true"
@@ -100,11 +95,6 @@
                 </table>
             </div>
 
-            <div id="find-bar" class="@(FindVisible ? string.Empty : "off")" @onclick:stopPropagation="true">
-                <input id="find-input" type="text" value="@FindQuery" @oninput="OnFindInput" placeholder="Find in sheet..." />
-                <span class="find-ct">@FindCountText</span>
-                <button class="icon-btn find-x" @onclick="HideFind">×</button>
-            </div>
         </div>
 
         <SpreadsheetAIPanel

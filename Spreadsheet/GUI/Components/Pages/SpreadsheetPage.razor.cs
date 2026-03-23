@@ -68,13 +68,6 @@ public partial class SpreadsheetPage : IAsyncDisposable
 
     /// <summary>
     ///     <para>
-    ///         Set of cell keys currently matching the active find query.
-    ///     </para>
-    /// </summary>
-    private readonly HashSet<string> _findMatches = new();
-
-    /// <summary>
-    ///     <para>
     ///         Local-storage documents currently loaded into the open dialog.
     ///     </para>
     /// </summary>
@@ -187,13 +180,6 @@ public partial class SpreadsheetPage : IAsyncDisposable
 
     /// <summary>
     ///     <para>
-    ///         Whether the find bar is visible.
-    ///     </para>
-    /// </summary>
-    private bool FindVisible { get; set; }
-
-    /// <summary>
-    ///     <para>
     ///         Whether a cell is currently in edit mode.
     ///     </para>
     /// </summary>
@@ -247,13 +233,6 @@ public partial class SpreadsheetPage : IAsyncDisposable
     ///     </para>
     /// </summary>
     private string EditingValue { get; set; } = string.Empty;
-
-    /// <summary>
-    ///     <para>
-    ///         Current query text used by find.
-    ///     </para>
-    /// </summary>
-    private string FindQuery { get; set; } = string.Empty;
 
     /// <summary>
     ///     <para>
@@ -354,17 +333,6 @@ public partial class SpreadsheetPage : IAsyncDisposable
     ///     </para>
     /// </summary>
     private IReadOnlyList<LocalDocument> LocalDocuments => _localDocuments;
-
-    /// <summary>
-    ///     <para>
-    ///         Current find-match counter text for the find toolbar.
-    ///     </para>
-    /// </summary>
-    private string FindCountText => string.IsNullOrWhiteSpace(FindQuery)
-        ? string.Empty
-        : _findMatches.Count > 0
-            ? $"{_findMatches.Count} found"
-            : "No matches";
 
     /// <summary>
     ///     <para>
@@ -583,13 +551,6 @@ public partial class SpreadsheetPage : IAsyncDisposable
 
     /// <summary>
     ///     <para>
-    ///         Determines whether the given cell coordinates are part of current find results.
-    ///     </para>
-    /// </summary>
-    private bool IsFindMatch(int row, int col) => _findMatches.Contains(CellKey(row, col));
-
-    /// <summary>
-    ///     <para>
     ///         Selects a cell and synchronizes formula input with that selection.
     ///     </para>
     /// </summary>
@@ -705,10 +666,6 @@ public partial class SpreadsheetPage : IAsyncDisposable
         }
 
         MarkUnsaved();
-        if (!string.IsNullOrWhiteSpace(FindQuery))
-        {
-            RefreshFindMatches();
-        }
     }
 
     /// <summary>
@@ -800,15 +757,6 @@ public partial class SpreadsheetPage : IAsyncDisposable
 
         SyncFormulaInputWithSelection();
 
-        if (!string.IsNullOrWhiteSpace(FindQuery))
-        {
-            RefreshFindMatches();
-        }
-        else
-        {
-            _findMatches.Clear();
-        }
-
         IsSaved = !_sheet.Changed;
         if (IsSaved)
         {
@@ -850,12 +798,6 @@ public partial class SpreadsheetPage : IAsyncDisposable
     /// </summary>
     private void HandleGlobalKeyDown(KeyboardEventArgs args)
     {
-        if ((args.CtrlKey || args.MetaKey) && args.Key.Equals("f", StringComparison.OrdinalIgnoreCase))
-        {
-            Notify("This feature isn't implemented yet.");
-            return;
-        }
-
         if ((args.CtrlKey || args.MetaKey) && args.Key.Equals("s", StringComparison.OrdinalIgnoreCase))
         {
             OpenModal(ModalKind.Save);
@@ -958,55 +900,6 @@ public partial class SpreadsheetPage : IAsyncDisposable
     private void CloseMenus()
     {
         OpenMenuName = null;
-    }
-
-    /// <summary>
-    ///     <para>
-    ///         Hides the find UI and clears query/match state.
-    ///     </para>
-    /// </summary>
-    private void HideFind()
-    {
-        FindVisible = false;
-        FindQuery = string.Empty;
-        _findMatches.Clear();
-    }
-
-    /// <summary>
-    ///     <para>
-    ///         Updates find query text and recomputes cell matches.
-    ///     </para>
-    /// </summary>
-    private void OnFindInput(ChangeEventArgs args)
-    {
-        FindQuery = args.Value?.ToString() ?? string.Empty;
-        RefreshFindMatches();
-    }
-
-    /// <summary>
-    ///     <para>
-    ///         Rebuilds the set of matched cells for the active find query.
-    ///     </para>
-    /// </summary>
-    private void RefreshFindMatches()
-    {
-        _findMatches.Clear();
-        if (string.IsNullOrWhiteSpace(FindQuery))
-        {
-            return;
-        }
-
-        foreach (var row in Enumerable.Range(0, Rows))
-        {
-            foreach (var col in Enumerable.Range(0, Cols))
-            {
-                var value = CellValue(row, col);
-                if (value.Contains(FindQuery, StringComparison.OrdinalIgnoreCase))
-                {
-                    _findMatches.Add(CellKey(row, col));
-                }
-            }
-        }
     }
 
     /// <summary>
@@ -1434,14 +1327,11 @@ public partial class SpreadsheetPage : IAsyncDisposable
 
     /// <summary>
     ///     <para>
-    ///         Resets selection, find state, edit state, and menus to default viewport values.
+    ///         Resets selection, edit state, and menus to default viewport values.
     ///     </para>
     /// </summary>
     private void ResetViewportState()
     {
-        _findMatches.Clear();
-        FindQuery = string.Empty;
-        FindVisible = false;
         CancelEdit();
         CloseMenus();
         SelectedRow = 0;

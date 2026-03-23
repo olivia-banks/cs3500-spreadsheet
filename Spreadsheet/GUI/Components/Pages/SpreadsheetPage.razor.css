@@ -33,7 +33,6 @@
     --orange-border: var(--bmos-warning-border);
     --grid-line: var(--bmos-grid-line);
     --grid-hdr-hover: var(--bmos-grid-hdr-hover);
-    --find-match-bg: var(--bmos-find-match-bg);
     --toast-bg: var(--bmos-toast-bg);
     --toast-text: var(--bmos-toast-text);
     --disabled-bg: var(--bmos-disabled-bg);
@@ -172,10 +171,6 @@ td.cell.selected {
     z-index: 2;
 }
 
-td.cell.found:not(.selected) {
-    background: var(--find-match-bg);
-}
-
 .cell-val {
     width: 100%;
     height: 100%;
@@ -200,48 +195,6 @@ td.cell.found:not(.selected) {
     background: var(--surface);
     outline: none;
     z-index: 20;
-}
-
-#find-bar {
-    position: absolute;
-    top: 10px;
-    right: 14px;
-    z-index: 50;
-    background: var(--surface);
-    border: 1px solid var(--border-dark);
-    border-radius: 6px;
-    box-shadow: var(--shadow-md);
-    padding: 8px 10px;
-    display: flex;
-    align-items: center;
-    gap: 8px;
-}
-
-#find-bar.off {
-    display: none;
-}
-
-#find-input {
-    border: 1px solid var(--border-dark);
-    border-radius: 4px;
-    font-family: inherit;
-    font-size: 13px;
-    color: var(--text);
-    padding: 5px 8px;
-    outline: none;
-    width: 180px;
-}
-
-.find-ct {
-    font-size: 12px;
-    color: var(--text-3);
-    white-space: nowrap;
-}
-
-.find-x {
-    width: 24px;
-    height: 24px;
-    font-size: 16px;
 }
 
 #notif {
