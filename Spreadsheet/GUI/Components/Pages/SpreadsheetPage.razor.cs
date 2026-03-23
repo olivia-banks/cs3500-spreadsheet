@@ -1104,6 +1104,7 @@ public partial class SpreadsheetPage : IAsyncDisposable
         }
 
         SaveModalOpen = false;
+        _sheet.MarkAsSaved();
         MarkSaved();
     }
 

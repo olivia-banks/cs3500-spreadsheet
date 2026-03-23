@@ -172,7 +172,7 @@ public partial class SpreadsheetPage
         }
         catch (Exception ex)
         {
-            response = $"Appologies, I encountered an error: {ex.Message}";
+            response = $"Apologies, I encountered an error: {ex.Message}";
         }
 
         _aiMessages.Add(new ChatMessage(false, response));

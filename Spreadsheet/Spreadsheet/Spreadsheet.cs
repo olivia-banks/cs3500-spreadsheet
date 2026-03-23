@@ -510,6 +510,17 @@ public class Spreadsheet
     /// </summary>
     public bool Changed { get; private set; }
 
+    /// <summary>
+    ///     <para>
+    ///         Resets the <see cref="Changed"/> flag to <c>false</c>.
+    ///     </para>
+    ///     <para>
+    ///         Call this after a successful save operation (e.g., after writing JSON to local storage
+    ///         or downloading a file) to keep the saved/unsaved UI badge in sync.
+    ///     </para>
+    /// </summary>
+    public void MarkAsSaved() => Changed = false;
+
 
     /// <summary>
     /// Saves this spreadsheet to a file
