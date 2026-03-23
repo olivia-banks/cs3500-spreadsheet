@@ -117,12 +117,73 @@ public class Spreadsheet
     {
         try
         {
-            // We can use System.Text.Json to read the JSON file and parse it into a JsonDocument. Then we can extract
-            // the cell data from the JSON and populate our spreadsheet using the existing SetContentsOfCell method,
-            // which will handle parsing the string form and updating the dependency graph.
-            using var stream = File.OpenRead(filename);
-            using var doc = JsonDocument.Parse(stream);
+            var json = File.ReadAllText(filename);
+            LoadFromJson(json);
+        }
+        catch (SpreadsheetReadWriteException)
+        {
+            throw;
+        }
+        catch (Exception ex)
+        {
+            throw new SpreadsheetReadWriteException($"Error loading spreadsheet: {ex.Message}");
+        }
+    }
 
+    /// <summary>
+    ///     <para>
+    ///         Returns this spreadsheet serialized as JSON text in the same format used by <see cref="Save(string)"/>.
+    ///     </para>
+    /// </summary>
+    /// <returns>The JSON representation of this spreadsheet.</returns>
+    /// <exception cref="SpreadsheetReadWriteException">Thrown if serialization fails.</exception>
+    public string GetJsonString()
+    {
+        // We only serialize non-empty cells; missing cells are implicitly empty by definition.
+        var data = _cells.ToDictionary(
+            kvp => kvp.Key.ToCanonicalString(),
+            kvp =>
+            {
+                var cell = kvp.Value;
+                var inner = cell.Kind switch
+                {
+                    CellKind.Text => cell.AsText(),
+                    CellKind.Number => cell.AsNumber().ToString(CultureInfo.InvariantCulture),
+                    CellKind.Formula => "=" + cell.AsFormula().ToString(),
+                };
+
+                return new { StringForm = inner };
+            });
+
+        var wrapper = new { Cells = data };
+
+        try
+        {
+            var options = new JsonSerializerOptions
+                { WriteIndented = true, Encoder = JavaScriptEncoder.UnsafeRelaxedJsonEscaping };
+            return JsonSerializer.Serialize(wrapper, options);
+        }
+        catch (Exception e) when (e is JsonException)
+        {
+            throw new SpreadsheetReadWriteException($"Error serializing spreadsheet: {e.Message}");
+        }
+    }
+
+    /// <summary>
+    ///     <para>
+    ///         Replaces this spreadsheet's contents with the spreadsheet represented by the provided JSON text.
+    ///     </para>
+    ///     <para>
+    ///         The JSON must match the format produced by <see cref="Save(string)"/> and <see cref="GetJsonString"/>.
+    ///     </para>
+    /// </summary>
+    /// <param name="json">The JSON text to load.</param>
+    /// <exception cref="SpreadsheetReadWriteException">Thrown if the JSON is malformed or cannot be loaded.</exception>
+    public void LoadFromJson(string json)
+    {
+        try
+        {
+            using var doc = JsonDocument.Parse(json);
             var root = doc.RootElement;
 
             if (!root.TryGetProperty("Cells", out JsonElement cellsElement))
@@ -135,8 +196,7 @@ public class Spreadsheet
                 throw new SpreadsheetReadWriteException("Malformed JSON: 'Cells' must be an object.");
             }
 
-            // Now we can iterate over the properties of the "Cells" object, where each property name is a cell name,
-            // and the value is an object containing the "StringForm" of the cell contents.
+            var parsedCells = new List<KeyValuePair<string, string>>();
             foreach (JsonProperty cellProperty in cellsElement.EnumerateObject())
             {
                 var cellName = cellProperty.Name;
@@ -159,20 +219,30 @@ public class Spreadsheet
                         $"Malformed cell '{cellName}': 'StringForm' must be a string.");
                 }
 
-                var stringForm = stringFormElement.GetString();
-
-                // Now we can set the contents of the cell using the existing SetContentsOfCell method, which will
-                // handle parsing the string form and updating the dependency graph.
-                SetContentsOfCell(cellName, stringForm!);
+                parsedCells.Add(new KeyValuePair<string, string>(cellName, stringFormElement.GetString() ?? string.Empty));
             }
+
+            // Clear existing state first so this call fully replaces the spreadsheet.
+            foreach (var existingName in GetNamesOfAllNonemptyCells().ToList())
+            {
+                SetContentsOfCell(existingName, string.Empty);
+            }
+
+            foreach (var (cellName, stringForm) in parsedCells)
+            {
+                SetContentsOfCell(cellName, stringForm);
+            }
+
+            Changed = false;
+        }
+        catch (SpreadsheetReadWriteException)
+        {
+            throw;
         }
         catch (Exception ex)
         {
             throw new SpreadsheetReadWriteException($"Error loading spreadsheet: {ex.Message}");
         }
-
-        // Finally, we can mark the spreadsheet as not changed, since we just loaded it.
-        Changed = false;
     }
 
     /// <summary>
@@ -440,6 +510,17 @@ public class Spreadsheet
     /// </summary>
     public bool Changed { get; private set; }
 
+    /// <summary>
+    ///     <para>
+    ///         Resets the <see cref="Changed"/> flag to <c>false</c>.
+    ///     </para>
+    ///     <para>
+    ///         Call this after a successful save operation (e.g., after writing JSON to local storage
+    ///         or downloading a file) to keep the saved/unsaved UI badge in sync.
+    ///     </para>
+    /// </summary>
+    public void MarkAsSaved() => Changed = false;
+
 
     /// <summary>
     /// Saves this spreadsheet to a file
@@ -474,34 +555,14 @@ public class Spreadsheet
     /// </exception>
     public void Save(string filename)
     {
-        // We just need to serialize the non-empty cells, since by definition any cell not in the dictionary is empty.
-        // We can serialize the cells as a dictionary from cell name to cell contents, where the cell contents is
-        // represented as a string (either the number as a string, the text, or the formula with an '=' prepended).
-        var data = _cells.ToDictionary(
-            kvp => kvp.Key.ToCanonicalString(),
-            kvp =>
-            {
-                var cell = kvp.Value;
-                var inner = cell.Kind switch
-                {
-                    CellKind.Text => cell.AsText(),
-                    CellKind.Number => cell.AsNumber().ToString(CultureInfo.InvariantCulture),
-                    CellKind.Formula => "=" + cell.AsFormula().ToString(),
-                };
-
-                return new { StringForm = inner };
-            });
-
-        // We can wrap the data in an outer object to match the format specified in the example.
-        var wrapper = new { Cells = data };
-
-        // Now we can serialize the wrapper object to JSON and write it to the file.
         try
         {
-            var opt = new JsonSerializerOptions
-                { WriteIndented = true, Encoder = JavaScriptEncoder.UnsafeRelaxedJsonEscaping };
-            var json = JsonSerializer.Serialize(wrapper, opt);
+            var json = GetJsonString();
             File.WriteAllText(filename, json);
+        }
+        catch (SpreadsheetReadWriteException)
+        {
+            throw;
         }
         catch (Exception e) when (e is IOException || e is JsonException)
         {
@@ -658,6 +719,43 @@ public class Spreadsheet
         return toRecalculate
             .Select(c => CellLocation.Canonicalize(c.ColumnIndex, c.RowIndex))
             .ToList();
+    }
+
+    /// <summary>
+    /// Gets the immediate cells that depend on the given cell (i.e., cells whose formulas reference the given cell).
+    /// </summary>
+    /// <param name="name">The cell name (e.g., "A1").</param>
+    /// <returns>An enumerable of cell names that directly depend on the given cell.</returns>
+    public IEnumerable<string> GetCellDependents(string name)
+    {
+        try
+        {
+            var location = LocationOfReference(name);
+            return _dependencyGraph.GetDependents(CellLocation.Canonicalize(location.ColumnIndex, location.RowIndex));
+        }
+        catch (Exception)
+        {
+            return Enumerable.Empty<string>();
+        }
+    }
+
+    /// <summary>
+    /// Gets the immediate cells that the given cell depends on (i.e., cells referenced in the given cell's formula).
+    /// Only works for formula cells; text and number cells have no dependencies.
+    /// </summary>
+    /// <param name="name">The cell name (e.g., "A1").</param>
+    /// <returns>An enumerable of cell names that the given cell directly depends on.</returns>
+    public IEnumerable<string> GetCellDependencies(string name)
+    {
+        try
+        {
+            var location = LocationOfReference(name);
+            return _dependencyGraph.GetDependees(CellLocation.Canonicalize(location.ColumnIndex, location.RowIndex));
+        }
+        catch (Exception)
+        {
+            return Enumerable.Empty<string>();
+        }
     }
 }
 

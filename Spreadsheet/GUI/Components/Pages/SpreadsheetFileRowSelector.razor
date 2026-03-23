@@ -1,0 +1,38 @@
+@namespace GUI.Components.Pages
+
+<div class="file-list">
+    @if (Rows.Count == 0)
+    {
+        <div class="empty-local-docs">@EmptyText</div>
+    }
+    else
+    {
+        @foreach (var row in Rows)
+        {
+            <div class="file-row @(SelectedName == row.Name ? "selected" : string.Empty)" @onclick="(() => OnSelect.InvokeAsync(row.Name))">
+                <span class="file-icon">[ ]</span>
+                <span class="file-name">@row.Name</span>
+                @if (!string.IsNullOrWhiteSpace(row.MetaText))
+                {
+                    <span class="file-date">@row.MetaText</span>
+                }
+                @if (ShowDelete)
+                {
+                    <button class="btn danger"
+                            title="Delete local copy"
+                            @onclick:stopPropagation="true"
+                            @onclick="(() => OnDelete.InvokeAsync(row.Name))">Delete</button>
+                }
+            </div>
+        }
+    }
+</div>
+
+@code {
+    [Parameter] public IReadOnlyList<FileRowOption> Rows { get; set; } = [];
+    [Parameter] public string? SelectedName { get; set; }
+    [Parameter] public string EmptyText { get; set; } = "No items.";
+    [Parameter] public bool ShowDelete { get; set; }
+    [Parameter] public EventCallback<string> OnSelect { get; set; }
+    [Parameter] public EventCallback<string> OnDelete { get; set; }
+}

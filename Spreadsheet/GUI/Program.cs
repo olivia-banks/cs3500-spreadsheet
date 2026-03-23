@@ -1,15 +1,30 @@
 using System;
+using System.Collections.Generic;
 using GUI.Components;
 using GUI.Components.Services;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.Extensions.AI;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
+using System.Linq;
+using System.Net.Http;
+using System.Text.Json;
 
 namespace GUI
 {
+    /// <summary>
+    ///     <para>
+    ///         Application entry point and ASP.NET Core host configuration for the GUI project.
+    ///     </para>
+    /// </summary>
     public class Program
     {
+        /// <summary>
+        ///     <para>
+        ///         Configures services, middleware, and routes, then starts the web application.
+        ///     </para>
+        /// </summary>
+        /// <param name="args">Command-line arguments for the host.</param>
         public static void Main( string[] args )
         {
             var builder = WebApplication.CreateBuilder(args);
@@ -17,12 +32,11 @@ namespace GUI
             // Add services to the container.
             builder.Services.AddRazorComponents()
                 .AddInteractiveServerComponents();
-            
-            
+
             // Add AI service to our app.
-            builder.Services.AddRazorComponents()
-                .AddInteractiveServerComponents();
-            builder.Services.AddChatClient(new OllamaChatClient(new Uri("http://localhost:11434"), "qwen3:0.6B"));
+            var ollamaEndpoint = builder.Configuration["Ollama:Endpoint"] ?? "http://localhost:11434";
+            var modelToUse = DiscoverOllamaModel(ollamaEndpoint);
+            builder.Services.AddChatClient(new OllamaChatClient(new Uri(ollamaEndpoint), modelToUse));
             builder.Services.AddScoped<SpreadsheetAIService>();
 
             var app = builder.Build();
@@ -44,6 +58,82 @@ namespace GUI
                 .AddInteractiveServerRenderMode();
 
             app.Run();
+        }
+
+        /// <summary>
+        ///     <para>
+        ///         Queries the Ollama endpoint for available models and selects a default model name.
+        ///     </para>
+        /// </summary>
+        /// <param name="endpoint">The base URL of the Ollama service.</param>
+        /// <returns>The selected Ollama model name.</returns>
+        private static string DiscoverOllamaModel(string endpoint)
+        {
+            using var httpClient = new HttpClient { BaseAddress = new Uri(endpoint) };
+            using var response = httpClient.GetAsync("/api/tags").GetAwaiter().GetResult();
+
+            if (!response.IsSuccessStatusCode)
+            {
+                throw new InvalidOperationException(
+                    $"Failed to query Ollama models from {endpoint}/api/tags (status {(int)response.StatusCode}).");
+            }
+
+            using var stream = response.Content.ReadAsStream();
+            var payload = JsonSerializer.Deserialize<OllamaTagsResponse>(stream, new JsonSerializerOptions
+            {
+                PropertyNameCaseInsensitive = true,
+            });
+
+            var models = payload?.Models?
+                .Select(m => m.Name ?? string.Empty)
+                .Where(name => !string.IsNullOrWhiteSpace(name))
+                .Distinct(StringComparer.Ordinal)
+                .OrderBy(name => name, StringComparer.Ordinal)
+                .ToArray()
+                ?? [];
+
+            if (models.Length == 0)
+            {
+                throw new InvalidOperationException(
+                    $"No Ollama models discovered at {endpoint}. Pull at least one model (e.g., `ollama pull qwen3:0.6B`).");
+            }
+
+            if (models.Length > 1)
+            {
+                Console.WriteLine($"Multiple Ollama models discovered. Defaulting to '{models[0]}'. Available: {string.Join(", ", models)}");
+            }
+
+            return models[0];
+        }
+
+        /// <summary>
+        ///     <para>
+        ///         Deserializable payload shape for Ollama's <c>/api/tags</c> response.
+        ///     </para>
+        /// </summary>
+        private sealed class OllamaTagsResponse
+        {
+            /// <summary>
+            ///     <para>
+            ///         The list of discovered model descriptors.
+            ///     </para>
+            /// </summary>
+            public List<OllamaModelInfo>? Models { get; set; }
+        }
+
+        /// <summary>
+        ///     <para>
+        ///         Minimal model descriptor used to read an Ollama model name.
+        ///     </para>
+        /// </summary>
+        private sealed class OllamaModelInfo
+        {
+            /// <summary>
+            ///     <para>
+            ///         The model identifier reported by Ollama.
+            ///     </para>
+            /// </summary>
+            public string? Name { get; set; }
         }
     }
 }

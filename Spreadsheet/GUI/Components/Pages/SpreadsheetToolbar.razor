@@ -1,0 +1,31 @@
+@namespace GUI.Components.Pages
+
+<div id="toolbar">
+    <button class="tb-btn" @onclick="OnOpenDemo">Demo</button>
+    <div class="bar-sep"></div>
+    <button class="tb-btn" @onclick="OnOpenSave">Save</button>
+    <button class="tb-btn" @onclick="OnOpenLoad">Open</button>
+    <button class="tb-btn tb-btn-disabled" title="This feature isn't implemented yet." type="button" disabled>Export</button>
+    <div class="bar-sep"></div>
+    <button class="tb-btn tb-btn-disabled" title="This feature isn't implemented yet." type="button" disabled>↩ Undo</button>
+    <button class="tb-btn tb-btn-disabled" title="This feature isn't implemented yet." type="button" disabled>↪ Redo</button>
+    <div class="bar-sep"></div>
+    <button class="tb-btn tb-btn-disabled" title="This feature isn't implemented yet." type="button" disabled>Copy</button>
+    <button class="tb-btn tb-btn-disabled" title="This feature isn't implemented yet." type="button" disabled>Paste</button>
+    <button class="tb-btn" @onclick="OnClearSelectedCell">Clear</button>
+    <div id="zoom-ctrl">
+        <button class="icon-btn zoom-btn" @onclick="OnZoomOut">-</button>
+        <span id="zoom-val">@ZoomPercentText</span>
+        <button class="icon-btn zoom-btn" @onclick="OnZoomIn">+</button>
+    </div>
+</div>
+
+@code {
+    [Parameter] public string ZoomPercentText { get; set; } = string.Empty;
+    [Parameter] public EventCallback OnOpenDemo { get; set; }
+    [Parameter] public EventCallback OnOpenSave { get; set; }
+    [Parameter] public EventCallback OnOpenLoad { get; set; }
+    [Parameter] public EventCallback OnClearSelectedCell { get; set; }
+    [Parameter] public EventCallback OnZoomIn { get; set; }
+    [Parameter] public EventCallback OnZoomOut { get; set; }
+}

@@ -5,39 +5,66 @@
 
 namespace GUI.Components.Services;
 
+using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Threading.Tasks;
 using GUI.Components.Tools;
 using Microsoft.Extensions.AI;
 using Spreadsheet;
 
 /// <summary>
-/// Provides AI-driven interaction capabilities for spreadsheet manipulation.
+///     <para>
+///         Provides AI-driven interaction capabilities for spreadsheet manipulation.
+///     </para>
 /// </summary>
 public class SpreadsheetAIService
 {
-    /// <summary>
-    /// The client used to communicate with the chat service.
-    /// </summary>
-    /// <remarks>
-    /// This field is marked as <c>readonly</c> to ensure that the client instance 
-    /// remains constant throughout the lifetime of this service, supporting 
-    /// thread-safety and preventing accidental reassignment.
-    /// </remarks>
-    private readonly IChatClient _chatClient;
+    private const string DefaultSystemPrompt = """
+You are BMO, a cheerful spreadsheet assistant.
+
+Rules:
+
+ - Always refer to yourself as "BMO." Never use "I," "me," or "my."
+ - Speak in slightly simplified, warm English. Never use emoji or sarcasm.
+ - Always use read tools to inspect data before making claims. Never invent cell values.
+ - BMO cannot modify cells when the user clearly requests it.
+After any modification, state which cells changed and their new values or formulas.
+Keep responses short. If a request is ambiguous, ask one follow-up question.
+Warn before overwriting or deleting data.
+""";
 
     /// <summary>
-    /// Gets the conversation history for the current session.
+    ///     <para>
+    ///         The client used to communicate with the chat service.
+    ///     </para>
+    /// </summary>
+    /// <remarks>
+    ///     This field is marked as <c>readonly</c> to ensure that the client instance
+    ///     remains constant throughout the lifetime of this service, supporting
+    ///     thread-safety and preventing accidental reassignment.
+    /// </remarks>
+    private readonly IChatClient _chatClient;
+    private readonly string _systemPrompt;
+
+    /// <summary>
+    ///     <para>
+    ///         Gets the conversation history for the current session.
+    ///     </para>
     /// </summary>
     public List<ChatMessage> ChatHistory { get; } = new();
 
     /// <summary>
-    /// Gets a value indicating whether the service is currently processing an AI request.
+    ///     <para>
+    ///         Gets a value indicating whether the service is currently processing an AI request.
+    ///     </para>
     /// </summary>
     public bool IsProcessing { get; private set; }
 
     /// <summary>
-    /// Initializes a new instance of the <see cref="SpreadsheetAIService"/> class.
+    ///     <para>
+    ///         Initializes a new instance of the <see cref="SpreadsheetAIService"/> class.
+    ///     </para>
     /// </summary>
     /// <param name="chatClient">The underlying chat client to use for AI responses.</param>
     public SpreadsheetAIService(IChatClient chatClient)
@@ -45,21 +72,32 @@ public class SpreadsheetAIService
         _chatClient = new ChatClientBuilder(chatClient)
             .UseFunctionInvocation()
             .Build();
+
+        _systemPrompt = DefaultSystemPrompt;
     }
 
     /// <summary>
-    /// Processes a natural language query and performs actions on the provided <see cref="Spreadsheet"/>.
+    ///     <para>
+    ///         Processes a natural language query and performs actions on the provided <see cref="Spreadsheet"/>.
+    ///     </para>
     /// </summary>
     /// <param name="input">The user's natural language request.</param>
     /// <param name="activeSheet">The spreadsheet instance to be manipulated by the AI.</param>
-    /// <returns>A task representing the asynchronous operation.</returns>
-    public async Task ProcessQueryAsync(string input, Spreadsheet activeSheet)
+    /// <returns>
+    ///     The assistant's response text.
+    /// </returns>
+    public async Task<string> ProcessQueryAsync(string input, Spreadsheet activeSheet)
     {
-        if (string.IsNullOrWhiteSpace(input)) return;
+        if (string.IsNullOrWhiteSpace(input)) return string.Empty;
         IsProcessing = true;
 
         try
         {
+            if (ChatHistory.Count == 0)
+            {
+                ChatHistory.Add(new ChatMessage(ChatRole.System, _systemPrompt));
+            }
+
             ChatHistory.Add(new ChatMessage(ChatRole.User, input));
 
             // Define the tools available to the AI based on the current sheet context
@@ -69,18 +107,25 @@ public class SpreadsheetAIService
                 Tools = [
                     AIFunctionFactory.Create(tools.SetCellContent),
                     AIFunctionFactory.Create(tools.GetCellContentInfo),
-                    AIFunctionFactory.Create(tools.GetActiveCells)
+                    AIFunctionFactory.Create(tools.GetActiveCells),
+                    AIFunctionFactory.Create(tools.GetCellValue),
+                    AIFunctionFactory.Create(tools.GetCellRange),
+                    AIFunctionFactory.Create(tools.GetSpreadsheetSnapshot),
+                    AIFunctionFactory.Create(tools.GetCellDependencies),
+                    AIFunctionFactory.Create(tools.GetCellDependents)
                 ]
             };
 
             // Request response from AI; if it needs data, it will call the tools provided above
             var response = await _chatClient.GetResponseAsync(ChatHistory, options);
 
-            // Save the AI's response to the history
-            if (response.Messages.Count >= 3)
-                ChatHistory.Add(response.Messages[2]);
-            else
-                ChatHistory.Add(response.Messages[0]);
+            // Find the last assistant message that has actual text
+            var botMessage = response.Messages
+                .LastOrDefault(m => m.Role == ChatRole.Assistant && !string.IsNullOrWhiteSpace(m.Text))
+                ?? response.Messages.Last();
+
+            ChatHistory.Add(botMessage);
+            return botMessage.Text ?? string.Empty;
         }
         finally
         {

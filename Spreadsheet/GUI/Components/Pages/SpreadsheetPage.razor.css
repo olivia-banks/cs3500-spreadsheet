@@ -1,0 +1,227 @@
+*, *::before, *::after {
+    box-sizing: border-box;
+}
+
+.bmos-shell {
+    --brand-name: "BMOS";
+    --font-sans: var(--bmos-font-sans);
+    --bg: var(--bmos-bg);
+    --bg-chrome: var(--bmos-bg-chrome);
+    --bg-header: var(--bmos-bg-header);
+    --surface: var(--bmos-surface);
+    --border: var(--bmos-border);
+    --border-dark: var(--bmos-border-dark);
+    --overlay: var(--bmos-overlay);
+    --shadow-md: var(--bmos-shadow-md);
+    --shadow-lg: var(--bmos-shadow-lg);
+    --text: var(--bmos-text);
+    --text-2: var(--bmos-text-muted);
+    --text-3: var(--bmos-text-subtle);
+    --text-strong: var(--bmos-text-strong);
+    --text-on-accent: var(--bmos-text-on-accent);
+    --accent: var(--bmos-accent);
+    --accent-hover: var(--bmos-accent-hover);
+    --accent-light: var(--bmos-accent-light);
+    --accent-border: var(--bmos-accent-border);
+    --sel-bg: var(--bmos-selected-bg);
+    --sel-border: var(--bmos-selected-border);
+    --green: var(--bmos-success);
+    --green-light: var(--bmos-success-light);
+    --green-border: var(--bmos-success-border);
+    --orange: var(--bmos-warning);
+    --orange-light: var(--bmos-warning-light);
+    --orange-border: var(--bmos-warning-border);
+    --grid-line: var(--bmos-grid-line);
+    --grid-hdr-hover: var(--bmos-grid-hdr-hover);
+    --toast-bg: var(--bmos-toast-bg);
+    --toast-text: var(--bmos-toast-text);
+    --disabled-bg: var(--bmos-disabled-bg);
+    --disabled-text: var(--bmos-disabled-text);
+    --mono: "JetBrains Mono", Consolas, monospace;
+    --row-h: 25px;
+    --col-w: 100px;
+    --hdr-w: 46px;
+    --hdr-h: 24px;
+
+    font-family: var(--font-sans);
+    font-size: 13px;
+    color: var(--text);
+    background: var(--bg);
+    display: flex;
+    flex-direction: column;
+    height: 100vh;
+    overflow: hidden;
+}
+
+#workspace {
+    display: flex;
+    flex: 1;
+    overflow: hidden;
+}
+
+#grid-scroll {
+    flex: 1;
+    overflow: auto;
+    position: relative;
+    background: var(--surface);
+}
+
+#grid-scroll::-webkit-scrollbar {
+    width: 10px;
+    height: 10px;
+}
+
+#grid-scroll::-webkit-scrollbar-track {
+    background: var(--bg-chrome);
+}
+
+#grid-scroll::-webkit-scrollbar-thumb {
+    background: var(--border-dark);
+    border-radius: 5px;
+    border: 2px solid var(--bg-chrome);
+}
+
+#grid-inner {
+    display: inline-block;
+    min-width: 100%;
+}
+
+table#sheet {
+    border-collapse: collapse;
+    table-layout: fixed;
+    -webkit-user-select: none;
+    user-select: none;
+}
+
+thead th {
+    background: var(--bg-header);
+    border: 1px solid var(--grid-line);
+    border-bottom: 1px solid var(--border-dark);
+    height: var(--hdr-h);
+    font-family: var(--mono);
+    font-size: 11px;
+    font-weight: 500;
+    color: var(--text-2);
+    -webkit-user-select: none;
+    user-select: none;
+    text-align: center;
+    user-select: none;
+    cursor: default;
+    position: sticky;
+    top: 0;
+    z-index: 10;
+}
+
+thead th.corner {
+    width: var(--hdr-w);
+    min-width: var(--hdr-w);
+    left: 0;
+    z-index: 11;
+    border-right: 1px solid var(--border-dark);
+}
+
+thead th.col-hdr {
+    width: var(--col-w);
+    min-width: var(--col-w);
+    transition: background 0.1s;
+}
+
+thead th.col-hdr:hover {
+    background: var(--grid-hdr-hover);
+}
+
+td.row-hdr {
+    background: var(--bg-header);
+    border: 1px solid var(--grid-line);
+    border-right: 1px solid var(--border-dark);
+    width: var(--hdr-w);
+    min-width: var(--hdr-w);
+    font-family: var(--mono);
+    font-size: 11px;
+    font-weight: 500;
+    -webkit-user-select: none;
+    user-select: none;
+    color: var(--text-2);
+    text-align: right;
+    padding-right: 8px;
+    user-select: none;
+    cursor: default;
+    position: sticky;
+    left: 0;
+    z-index: 5;
+}
+
+td.cell {
+    border: 1px solid var(--grid-line);
+    height: var(--row-h);
+    padding: 0;
+    cursor: cell;
+    overflow: hidden;
+    white-space: nowrap;
+    position: relative;
+    background: var(--surface);
+    -webkit-user-select: none;
+    user-select: none;
+}
+
+td.cell.selected {
+    background: var(--sel-bg);
+    outline: 2px solid var(--sel-border);
+    outline-offset: -1px;
+    z-index: 2;
+}
+
+.cell-val {
+    width: 100%;
+    height: 100%;
+    padding: 0 6px;
+    display: flex;
+    align-items: center;
+    font-size: 13px;
+    color: var(--text-strong);
+    overflow: hidden;
+    -webkit-user-select: none;
+    user-select: none;
+}
+
+.cell-edit-input {
+    position: absolute;
+    inset: 0;
+    border: 2px solid var(--sel-border);
+    padding: 0 5px;
+    font-family: inherit;
+    font-size: 13px;
+    color: var(--text-strong);
+    background: var(--surface);
+    outline: none;
+    z-index: 20;
+}
+
+#notif {
+    position: fixed;
+    bottom: 32px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: var(--toast-bg);
+    color: var(--toast-text);
+    border-radius: 4px;
+    font-size: 13px;
+    padding: 8px 18px;
+    z-index: 1000;
+    opacity: 0;
+    transition: opacity 0.2s;
+    pointer-events: none;
+    white-space: nowrap;
+    box-shadow: 0 2px 8px rgb(0 0 0 / 20%);
+}
+
+#notif.show {
+    opacity: 1;
+}
+
+.resize-capture {
+    position: fixed;
+    inset: 0;
+    z-index: 400;
+    cursor: col-resize;
+}
