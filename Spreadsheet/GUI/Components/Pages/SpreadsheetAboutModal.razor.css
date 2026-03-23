@@ -20,6 +20,12 @@
     color: var(--text-2);
 }
 
+.about-note {
+    margin: 12px 0 0;
+    font-size: 12px;
+    color: var(--text-3);
+}
+
 .credits-authors {
     margin: 0 0 12px;
     font-size: 13px;

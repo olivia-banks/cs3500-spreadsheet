@@ -17,7 +17,7 @@
                 OnDelete="OnDeleteLocalDocument" />
 
             <label class="modal-label">Or load from a JSON file</label>
-            <InputFile OnChange="OnUploadFile" accept=".json,application/json" />
+            <InputFile @key="UploadInputKey" OnChange="OnUploadFile" accept=".json,application/json" />
         </div>
         <div class="modal-foot">
             <button class="btn" @onclick="OnCancel">Cancel</button>
@@ -33,6 +33,7 @@
     [Parameter] public EventCallback<string> OnSelectLocalDocument { get; set; }
     [Parameter] public EventCallback<string> OnDeleteLocalDocument { get; set; }
     [Parameter] public EventCallback<InputFileChangeEventArgs> OnUploadFile { get; set; }
+    [Parameter] public int UploadInputKey { get; set; }
     [Parameter] public EventCallback OnCancel { get; set; }
     [Parameter] public EventCallback OnOpenSelected { get; set; }
 

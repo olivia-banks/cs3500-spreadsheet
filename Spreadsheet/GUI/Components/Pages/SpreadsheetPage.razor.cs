@@ -285,6 +285,13 @@ public partial class SpreadsheetPage : IAsyncDisposable
 
     /// <summary>
     ///     <para>
+    ///         Render key for the load modal file input, used to clear selected file after import.
+    ///     </para>
+    /// </summary>
+    private int LoadUploadInputKey { get; set; }
+
+    /// <summary>
+    ///     <para>
     ///         Selected save destination for save modal actions.
     ///     </para>
     /// </summary>
@@ -1243,6 +1250,7 @@ public partial class SpreadsheetPage : IAsyncDisposable
             var loadedName = string.IsNullOrWhiteSpace(fileNameWithoutExt) ? "Imported Sheet" : fileNameWithoutExt;
 
             LoadSpreadsheetFromJson(json, loadedName);
+            LoadUploadInputKey++;
             LoadModalOpen = false;
             Notify($"Loaded '{loadedName}' from file");
         }
@@ -1318,19 +1326,7 @@ public partial class SpreadsheetPage : IAsyncDisposable
     /// </summary>
     private string ExportSheetJson()
     {
-        var tempPath = Path.Combine(Path.GetTempPath(), $"bmos-{Guid.NewGuid():N}.json");
-        try
-        {
-            _sheet.Save(tempPath);
-            return File.ReadAllText(tempPath);
-        }
-        finally
-        {
-            if (File.Exists(tempPath))
-            {
-                File.Delete(tempPath);
-            }
-        }
+        return _sheet.GetJsonString();
     }
 
     /// <summary>
@@ -1340,24 +1336,12 @@ public partial class SpreadsheetPage : IAsyncDisposable
     /// </summary>
     private void LoadSpreadsheetFromJson(string json, string documentName)
     {
-        var tempPath = Path.Combine(Path.GetTempPath(), $"bmos-load-{Guid.NewGuid():N}.json");
-        try
-        {
-            File.WriteAllText(tempPath, json);
-            _sheet = new SpreadsheetDoc(tempPath);
-            DocumentName = documentName;
-            SaveName = documentName;
-            ResetViewportState();
-            MarkSaved();
-            SyncUIWithSpreadsheet();
-        }
-        finally
-        {
-            if (File.Exists(tempPath))
-            {
-                File.Delete(tempPath);
-            }
-        }
+        _sheet.LoadFromJson(json);
+        DocumentName = documentName;
+        SaveName = documentName;
+        ResetViewportState();
+        MarkSaved();
+        SyncUIWithSpreadsheet();
     }
 
     /// <summary>
