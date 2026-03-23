@@ -825,7 +825,7 @@ public partial class SpreadsheetPage : IAsyncDisposable
     ///         Handles keyboard behavior while in in-cell edit mode.
     ///     </para>
     /// </summary>
-    private async Task HandleEditKeyDown(KeyboardEventArgs args)
+    private void HandleEditKeyDown(KeyboardEventArgs args)
     {
         if (args.Key == "Enter")
         {
@@ -841,8 +841,6 @@ public partial class SpreadsheetPage : IAsyncDisposable
         {
             CancelEdit();
         }
-
-        await Task.CompletedTask;
     }
 
     /// <summary>
@@ -960,18 +958,6 @@ public partial class SpreadsheetPage : IAsyncDisposable
     private void CloseMenus()
     {
         OpenMenuName = null;
-    }
-
-    /// <summary>
-    ///     <para>
-    ///         Shows the find UI and computes current matches.
-    ///     </para>
-    /// </summary>
-    private void ShowFind()
-    {
-        FindVisible = true;
-        RefreshFindMatches();
-        CloseMenus();
     }
 
     /// <summary>
