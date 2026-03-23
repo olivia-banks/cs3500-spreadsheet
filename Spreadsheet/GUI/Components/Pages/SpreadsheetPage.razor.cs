@@ -798,6 +798,18 @@ public partial class SpreadsheetPage : IAsyncDisposable
     /// </summary>
     private void HandleGlobalKeyDown(KeyboardEventArgs args)
     {
+        if ((args.CtrlKey || args.MetaKey) && args.Key.Equals("n", StringComparison.OrdinalIgnoreCase))
+        {
+            NewDocument();
+            return;
+        }
+
+        if ((args.CtrlKey || args.MetaKey) && args.Key.Equals("o", StringComparison.OrdinalIgnoreCase))
+        {
+            OpenModal(ModalKind.Load);
+            return;
+        }
+
         if ((args.CtrlKey || args.MetaKey) && args.Key.Equals("s", StringComparison.OrdinalIgnoreCase))
         {
             OpenModal(ModalKind.Save);
