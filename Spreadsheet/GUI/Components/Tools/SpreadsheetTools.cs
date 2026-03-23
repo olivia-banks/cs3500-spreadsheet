@@ -261,7 +261,12 @@ public class SpreadsheetTools(Spreadsheet sheet)
     {
         if (string.IsNullOrEmpty(cellName) || !char.IsLetter(cellName[0]))
             throw new ArgumentException($"Invalid cell name: {cellName}");
-        return cellName[0] - 'A';
+        
+        var col = char.ToUpperInvariant(cellName[0]) - 'A';
+        if (col is < 0 or > 25)
+            throw new ArgumentException($"Invalid cell name: {cellName}");
+
+        return col;
     }
 
     /// <summary>
